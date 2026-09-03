@@ -106,7 +106,7 @@ describe('Contract Resolver — resolveContracts over source-agents (14 v3)', ()
 
   it('rejects v1-shaped contracts (negative path: no compat branch)', () => {
     // v1 合同已退役（r13-2 Step 5），用自建 fixture 验证负路径
-    const legacyDir = mkdtempSync(join(resolve('..', 'TriMC'), '.tmp-v1-neg-'));
+    const legacyDir = mkdtempSync(join(resolve('..', 'TriMMC'), '.tmp-v1-neg-'));
     writeFileSync(
       join(legacyDir, 'Legacy.contract.yaml'),
       [
