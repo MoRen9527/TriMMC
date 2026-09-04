@@ -49,3 +49,4 @@ Useful commands:
 
 - 中央面（本仓，sg 部署 /srv/fleet/TriMC 物理冻结）服务端口 8710；接收本机 TriRLC（8711）与 TriMLC-Channel（8713）上送。heyuan TriRMC 为 R 面周平面迁移自治执行点——「上送中央面+R 面执行迁移」双职责分属两节点。
 - 连接面变更须 CEO 明令（D-17 在册）。
+- 审计条款（LG-031）：M/R 面按承载语义连，非按面名连。
