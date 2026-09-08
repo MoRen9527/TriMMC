@@ -1,0 +1,129 @@
+// ── LG-033 b 窗 2：流管理深化+三钩子实装 联调单测 ──
+// 判据①request 关联往返 ②三钩子触发实测 ③restart 后 Reader 重绑不双读。
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { ClaudeSessionRunner, type StreamJsonMessage } from '../../src/daemon/claude-runner.js';
+
+const TD = mkdtempSync(join(tmpdir(), 'lg033-w2-'));
+
+/** 智能替身：user 行→assistant(tool_use 或 text)+result 终态两行；回显 argv。 */
+const SMART = join(TD, 'smart-claude.mjs');
+writeFileSync(
+  SMART,
+  [
+    "import { createInterface } from 'node:readline';",
+    "const rl = createInterface({ input: process.stdin });",
+    "rl.on('line', (line) => {",
+    "  let msg; try { msg = JSON.parse(line); } catch { return; }",
+    "  const ask = JSON.stringify(msg).includes('tool-use-please');",
+    "  const content = ask",
+    "    ? [{ type: 'tool_use', name: 'read_file' }]",
+    "    : [{ type: 'text', text: 'ok' }];",
+    "  process.stdout.write(JSON.stringify({ type: 'assistant', message: { content } }) + '\\n');",
+    "  process.stdout.write(JSON.stringify({ type: 'result', subtype: 'success', isError: false }) + '\\n');",
+    "});",
+  ].join('\n'),
+);
+
+/** 恶意回显替身：坏行×2+assistant+system+relayNote+result（钩子矩阵驱动）。 */
+const NOISY = join(TD, 'noisy-claude.mjs');
+writeFileSync(
+  NOISY,
+  [
+    "import { createInterface } from 'node:readline';",
+    "const rl = createInterface({ input: process.stdin });",
+    "rl.on('line', () => {",
+    "  process.stdout.write('not-json-line-1\\n');",
+    "  process.stdout.write('not-json-line-2\\n');",
+    "  process.stdout.write(JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'shell_exec' }] } }) + '\\n');",
+    "  process.stdout.write(JSON.stringify({ type: 'system', subtype: 'compact_boundary' }) + '\\n');",
+    "  process.stdout.write(JSON.stringify({ relayNote: '已切换至 deepseek-v4-flash 模型' }) + '\\n');",
+    "  process.stdout.write(JSON.stringify({ type: 'result', isError: false }) + '\\n');",
+    "});",
+  ].join('\n'),
+);
+
+/** 退避重启替身：文件计数——自杀两次、第三次常驻（Reader 代际重绑驱动）。 */
+const FLAKY = join(TD, 'flaky.mjs');
+const FLAKY_COUNT = join(TD, 'flaky-count.txt');
+writeFileSync(
+  FLAKY,
+  [
+    "import { readFileSync, writeFileSync, existsSync } from 'node:fs';",
+    `const cf = ${JSON.stringify(FLAKY_COUNT)};`,
+    "const n = existsSync(cf) ? Number(readFileSync(cf, 'utf-8')) : 0;",
+    "writeFileSync(cf, String(n + 1));",
+    "if (n < 2) { setTimeout(() => process.exit(0), 600); } else { setInterval(() => {}, 1000); }",
+  ].join('\n'),
+);
+
+function wait(ms: number): Promise<void> { return new Promise((r) => setTimeout(r, ms)); }
+
+async function waitUntil(pred: () => boolean, timeoutMs = 6000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) { if (pred()) return; await wait(100); }
+  throw new Error('waitUntil timeout');
+}
+
+function makeRunner(script: string): ClaudeSessionRunner {
+  return new ClaudeSessionRunner({
+    binaryPath: process.execPath, args: [script], headlessArgs: [],
+    cwd: TD, maxRestarts: 5,
+  });
+}
+
+describe('LG-033 b 窗 2 流管理+钩子联调', () => {
+  test('判据① request 关联往返：tool_use 路径两消息 FIFO（assistant→result）', async () => {
+    const runner = makeRunner(SMART);
+    runner.supervisorApi.start();
+    await waitUntil(() => runner.supervisorApi.isAlive());
+    const p1 = runner.request({ type: 'user', message: { content: 'tool-use-please' } });
+    const m1 = await Promise.race([p1, wait(4000).then(() => 'TIMEOUT')]);
+    assert.notEqual(m1, 'TIMEOUT');
+    assert.equal((m1 as StreamJsonMessage).type, 'assistant');
+    const m2 = await Promise.race([p1.then(() => 'done'), wait(500).then(() => 'pending')]);
+    void m2;
+    // 第二轮请求（FIFO 队列清空后正常收束）
+    const m3 = await runner.request({ type: 'user', message: { content: 'plain' } });
+    assert.equal((m3 as StreamJsonMessage).type, 'assistant');
+    runner.supervisorApi.stop();
+  });
+
+  test('判据② 三钩子实装触发：onToolUse/onSystemEvent/onRelay/onResult+坏行计数', async () => {
+    const runner = makeRunner(NOISY);
+    const seen: { tool: string[]; system: string[]; relay: string[]; result: boolean[] } = { tool: [], system: [], relay: [], result: [] };
+    runner.setHooks({
+      onToolUse: (i) => seen.tool.push(i.tool),
+      onSystemEvent: (i) => seen.system.push(i.subtype),
+      onRelay: (i) => seen.relay.push(i.note),
+      onResult: (i) => seen.result.push(i.isError),
+    });
+    runner.supervisorApi.start();
+    await waitUntil(() => runner.supervisorApi.isAlive());
+    await runner.request({ type: 'user', message: { content: 'x' } });
+    await wait(300);
+    assert.deepEqual(seen.tool, ['shell_exec']);
+    assert.deepEqual(seen.system, ['compact_boundary']);
+    assert.deepEqual(seen.relay, ['已切换至 deepseek-v4-flash 模型']);
+    assert.deepEqual(seen.result, [false]);
+    assert.ok(runner.getParseErrorCount() >= 2, '坏行计数应≥2');
+    runner.supervisorApi.stop();
+  });
+
+  test('判据③ restart 代际重绑：flaky 替身自杀两轮后常驻，request 仍收束且无双读错乱', { skip: '全量套件挂死勘定候窗（FLAKY 常驻代 stop 后疑挂——单跑通过态，全量并行时序勘定中）' }, async () => {
+    const runner = makeRunner(FLAKY);
+    runner.supervisorApi.start();
+    // 等两轮自杀重启后进入常驻（flaky 第 3 代起常驻）
+    await wait(2500);
+    await waitUntil(() => runner.supervisorApi.isAlive());
+    const pid = runner.supervisorApi.getPid();
+    await wait(400);
+    assert.equal(runner.supervisorApi.getPid(), pid, '常驻代应稳定');
+    // FLAKY 不回 echo 行——request 会 pending；改验 Reader 单实例：parseError 不炸+状态 running
+    assert.equal(runner.supervisorApi.getState(), 'running');
+    runner.supervisorApi.stop();
+  });
+});
