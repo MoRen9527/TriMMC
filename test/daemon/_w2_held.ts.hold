@@ -1,5 +1,9 @@
 // ── LG-033 b 窗 2：流管理深化+三钩子实装 联调单测 ──
 // 判据①request 关联往返 ②三钩子触发实测 ③restart 后 Reader 重绑不双读。
+// 加固（2026-09-09 STE 勘定窗，CTO 修复令件②）：三判据 try/finally 兜 stop——
+// 勘定实锤挂死链=断言 throw 早于 stop()→stdin-readline 替身泄漏→文件进程不收束=套件挂
+// （hardened 对照 rc=1 干净收束 5.1s 不挂，commit 6d21779 勘定卷）；本件仍 .hold，
+// un-hold 双前置=①settleNext 世代校验（FSD 在办）+②本加固件。
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
@@ -78,18 +82,21 @@ function makeRunner(script: string): ClaudeSessionRunner {
 describe('LG-033 b 窗 2 流管理+钩子联调', () => {
   test('判据① request 关联往返：tool_use 路径两消息 FIFO（assistant→result）', async () => {
     const runner = makeRunner(SMART);
-    runner.supervisorApi.start();
-    await waitUntil(() => runner.supervisorApi.isAlive());
-    const p1 = runner.request({ type: 'user', message: { content: 'tool-use-please' } });
-    const m1 = await Promise.race([p1, wait(4000).then(() => 'TIMEOUT')]);
-    assert.notEqual(m1, 'TIMEOUT');
-    assert.equal((m1 as StreamJsonMessage).type, 'assistant');
-    const m2 = await Promise.race([p1.then(() => 'done'), wait(500).then(() => 'pending')]);
-    void m2;
-    // 第二轮请求（FIFO 队列清空后正常收束）
-    const m3 = await runner.request({ type: 'user', message: { content: 'plain' } });
-    assert.equal((m3 as StreamJsonMessage).type, 'assistant');
-    runner.supervisorApi.stop();
+    try {
+      runner.supervisorApi.start();
+      await waitUntil(() => runner.supervisorApi.isAlive());
+      const p1 = runner.request({ type: 'user', message: { content: 'tool-use-please' } });
+      const m1 = await Promise.race([p1, wait(4000).then(() => 'TIMEOUT')]);
+      assert.notEqual(m1, 'TIMEOUT');
+      assert.equal((m1 as StreamJsonMessage).type, 'assistant');
+      const m2 = await Promise.race([p1.then(() => 'done'), wait(500).then(() => 'pending')]);
+      void m2;
+      // 第二轮请求（FIFO 队列清空后正常收束）
+      const m3 = await runner.request({ type: 'user', message: { content: 'plain' } });
+      assert.equal((m3 as StreamJsonMessage).type, 'assistant');
+    } finally {
+      runner.supervisorApi.stop(); // 加固：断言翻转也兜停（防替身泄漏挂套件）
+    }
   });
 
   test('判据② 三钩子实装触发：onToolUse/onSystemEvent/onRelay/onResult+坏行计数', async () => {
@@ -101,29 +108,35 @@ describe('LG-033 b 窗 2 流管理+钩子联调', () => {
       onRelay: (i) => seen.relay.push(i.note),
       onResult: (i) => seen.result.push(i.isError),
     });
-    runner.supervisorApi.start();
-    await waitUntil(() => runner.supervisorApi.isAlive());
-    await runner.request({ type: 'user', message: { content: 'x' } });
-    await wait(300);
-    assert.deepEqual(seen.tool, ['shell_exec']);
-    assert.deepEqual(seen.system, ['compact_boundary']);
-    assert.deepEqual(seen.relay, ['已切换至 deepseek-v4-flash 模型']);
-    assert.deepEqual(seen.result, [false]);
-    assert.ok(runner.getParseErrorCount() >= 2, '坏行计数应≥2');
-    runner.supervisorApi.stop();
+    try {
+      runner.supervisorApi.start();
+      await waitUntil(() => runner.supervisorApi.isAlive());
+      await runner.request({ type: 'user', message: { content: 'x' } });
+      await wait(300);
+      assert.deepEqual(seen.tool, ['shell_exec']);
+      assert.deepEqual(seen.system, ['compact_boundary']);
+      assert.deepEqual(seen.relay, ['已切换至 deepseek-v4-flash 模型']);
+      assert.deepEqual(seen.result, [false]);
+      assert.ok(runner.getParseErrorCount() >= 2, '坏行计数应≥2');
+    } finally {
+      runner.supervisorApi.stop(); // 加固：断言翻转也兜停
+    }
   });
 
-  test('判据③ restart 代际重绑：flaky 替身自杀两轮后常驻，request 仍收束且无双读错乱', { skip: '全量套件挂死勘定候窗（FLAKY 常驻代 stop 后疑挂——单跑通过态，全量并行时序勘定中）' }, async () => {
+  test('判据③ restart 代际重绑：flaky 替身自杀两轮后常驻，request 仍收束且无双读错乱', { skip: 'un-hold 候双前置（勘定毕 2026-09-09：挂死根因=判据① product 侧 FIFO 竞态+泄漏；候 settleNext 世代校验修复〔FSD〕+本件 try/finally 加固〔已落〕；双前置齐后随 un-hold 翻绿实验启）' }, async () => {
     const runner = makeRunner(FLAKY);
-    runner.supervisorApi.start();
-    // 等两轮自杀重启后进入常驻（flaky 第 3 代起常驻）
-    await wait(2500);
-    await waitUntil(() => runner.supervisorApi.isAlive());
-    const pid = runner.supervisorApi.getPid();
-    await wait(400);
-    assert.equal(runner.supervisorApi.getPid(), pid, '常驻代应稳定');
-    // FLAKY 不回 echo 行——request 会 pending；改验 Reader 单实例：parseError 不炸+状态 running
-    assert.equal(runner.supervisorApi.getState(), 'running');
-    runner.supervisorApi.stop();
+    try {
+      runner.supervisorApi.start();
+      // 等两轮自杀重启后进入常驻（flaky 第 3 代起常驻）
+      await wait(2500);
+      await waitUntil(() => runner.supervisorApi.isAlive());
+      const pid = runner.supervisorApi.getPid();
+      await wait(400);
+      assert.equal(runner.supervisorApi.getPid(), pid, '常驻代应稳定');
+      // FLAKY 不回 echo 行——request 会 pending；改验 Reader 单实例：parseError 不炸+状态 running
+      assert.equal(runner.supervisorApi.getState(), 'running');
+    } finally {
+      runner.supervisorApi.stop(); // 加固：FLAKY 常驻代停机兜底（勘定原疑点闭锁）
+    }
   });
 });
