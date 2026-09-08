@@ -40,8 +40,9 @@ export interface ClaudeRunnerHooks {
   onParseError?: (info: { line: string; at: number }) => void;
 }
 
-/** 单次请求的 pending 项（窗 2：请求关联——按序 FIFO resolve）。 */
+/** 单次请求的 pending 项（窗 2：请求关联——按序 FIFO resolve；gen=世代归属）。 */
 interface PendingRequest {
+  gen: number;
   resolve: (msg: StreamJsonMessage) => void;
   reject: (err: Error) => void;
   sentAtMs: number;
@@ -55,6 +56,10 @@ export class ClaudeSessionRunner {
   private rlBoundPid: number | null = null; // 绑定进程代际（防旧 Reader 读新进程）
   private pendingQueue: PendingRequest[] = [];
   private parseErrorCount = 0;
+  // ── 窗 2 世代校验（STE 勘定竞态实锤修复，2026-09-08）：陈旧 result 结算新请求防 ──
+  private gen = 0;              // 请求世代（flush/停态推进）
+  private staleLines = 0;       // 旧代进程迟到行丢弃计数（审计）
+  private staleSettles = 0;     // 世代不匹配 settle 丢弃计数（审计）
 
   constructor(options: ClaudeRunnerOptions) {
     const spawnConfig: SupervisorSpawnConfig = {
@@ -81,6 +86,11 @@ export class ClaudeSessionRunner {
   /** 坏行累计（审计位；read 面经 getParseErrorCount）。 */
   getParseErrorCount(): number { return this.parseErrorCount; }
 
+  /** 世代审计面（STE 竞态修复验收）：旧代迟到行/世代不匹配 settle 丢弃计数。 */
+  getStaleAudit(): { staleLines: number; staleSettles: number } {
+    return { staleLines: this.staleLines, staleSettles: this.staleSettles };
+  }
+
   /** 台账/监控委托面（pause/resume/状态——rev2 ④ 协议位）。 */
   get supervisorApi(): {
     start: () => void; pause: () => void; resume: () => void; stop: () => void;
@@ -90,7 +100,7 @@ export class ClaudeSessionRunner {
       start: () => this.supervisor.start(),
       pause: () => this.supervisor.pause(),
       resume: () => this.supervisor.resume(),
-      stop: () => this.supervisor.stop(),
+      stop: () => this.stop(),
       getState: () => this.supervisor.getState(),
       getRestarts: () => this.supervisor.getRestarts(),
       isAlive: () => this.supervisor.isAlive(),
@@ -99,14 +109,27 @@ export class ClaudeSessionRunner {
   }
 
   /**
+   * 停止（STE 兜底加固）：supervisor.stop 之外强制 Reader 关闭+stdin end+
+   * pending flush——防 stdin-readline 常驻替身泄漏致事件环不排空（全量挂死形态）。
+   */
+  stop(): void {
+    this.flushPending('stopped');
+    if (this.rl) { this.rl.close(); this.rl = null; }
+    this.supervisor.stop();
+  }
+
+  /**
    * 窗 2：请求关联发送——写入一行并在流上等下一轮 assistant（FIFO 按序）。
    * result 终态先行时以 result 收束。进程不可写→立即 reject。
+   * 世代语义：pending 携带发起时代际（this.gen）；flush/停态推进世代后，
+   * 陈旧代 pending 已被 reject，后续同代迟到行经 settleNext 世代校验丢弃。
    */
   async request(msg: StreamJsonMessage): Promise<StreamJsonMessage> {
     const wrote = this.sendLine(msg);
     if (!wrote) throw new Error('claude stdin not writable (process not running)');
+    const gen = this.gen;
     return new Promise<StreamJsonMessage>((resolve, reject) => {
-      this.pendingQueue.push({ resolve, reject, sentAtMs: Date.now() });
+      this.pendingQueue.push({ gen, resolve, reject, sentAtMs: Date.now() });
     });
   }
 
@@ -124,11 +147,19 @@ export class ClaudeSessionRunner {
     if (this.rl && this.rlBoundPid === child.pid) return; // 同代际已绑
     if (this.rl) this.rl.close(); // 旧代际 Reader 关闭（防 restart 后双读）
     this.rlBoundPid = child.pid;
+    const boundPid = child.pid;
     this.rl = createInterface({ input: child.stdout });
-    this.rl.on('line', (line) => this.handleLine(line));
+    // 行回调闭包携带绑定代 pid——迟到行（旧进程产物在事件环排队）经代际校验丢弃
+    this.rl.on('line', (line) => this.handleLine(line, boundPid));
   }
 
-  private handleLine(line: string): void {
+  private handleLine(line: string, boundPid: number | null): void {
+    // 世代校验第一层（行级）：绑定代 pid≠当前进程 pid → 旧代迟到行丢弃+审计
+    const currentPid = this.childRef()?.pid ?? null;
+    if (boundPid !== currentPid) {
+      this.staleLines += 1;
+      return;
+    }
     const trimmed = line.trim();
     if (!trimmed) return;
     let msg: StreamJsonMessage;
@@ -170,14 +201,29 @@ export class ClaudeSessionRunner {
     this.settleNext(msg);
   }
 
-  /** FIFO 收束一个 pending（assistant 结果或 result 终态）。 */
+  /**
+   * FIFO 收束一个 pending（assistant 结果或 result 终态）。
+   * 世代校验第二层（STE 勘定竞态修复）：仅结算与当前代匹配的队首 pending——
+   * 世代不匹配（陈旧 settle 尝试）丢弃+审计计数，不结算新请求。
+   */
   private settleNext(msg: StreamJsonMessage): void {
-    const pending = this.pendingQueue.shift();
-    if (pending) pending.resolve(msg);
+    while (this.pendingQueue.length > 0) {
+      const pending = this.pendingQueue.shift()!;
+      if (pending.gen !== this.gen) {
+        // 陈旧代 pending（flush 遗留/跨代窜入）——丢弃+审计，继续找当前代
+        this.staleSettles += 1;
+        pending.reject(new Error('claude request settled against stale generation'));
+        continue;
+      }
+      pending.resolve(msg);
+      return;
+    }
+    // 队列空：无主行（无 pending 关联）静默忽略（替身/杂音形态）
   }
 
-  /** 进程停/paused：flush 全部 pending（reject——请求方感知失败）。 */
+  /** 进程停/paused：flush 全部 pending（reject——请求方感知失败）+世代推进。 */
   private flushPending(reason: string): void {
+    this.gen += 1; // 世代推进：flush 后旧代迟到 settle 一律不匹配
     for (const p of this.pendingQueue.splice(0)) {
       p.reject(new Error(`claude stream flushed: ${reason}`));
     }
