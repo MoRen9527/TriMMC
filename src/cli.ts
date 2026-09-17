@@ -72,7 +72,13 @@ const PLANE_SHIFT_PRESET = {
       '&& git add docs/workflow/operating-records \\',
       '&& (git diff --cached --quiet || git -c user.name="TriMC Scheduler" -c user.email="trimc@tri.company" \\',
       '     commit -m "ops: weekly plane shift {fromWeek}->{toWeek} (TriMC scheduler)") \\',
-      '&& git push /srv/git/TriMetaverse.git HEAD:dev',
+      // 夜航01 任务1③（2026-09-14）：push 被拒（非快进）→再拉取→merge 归账→重推。
+      // 台账锚：lg033-pool-sync-runbook §2.4（双向冲突 merge-only，禁跨 hub rebase 已推提交）。
+      // merge 冲突则整链非零失败暴露→人工裁决线；不 force。
+      '&& (git push /srv/git/TriMetaverse.git HEAD:dev \\',
+      '    || (git fetch /srv/git/TriMetaverse.git dev \\',
+      '        && git merge --no-edit FETCH_HEAD \\',
+      '        && git push /srv/git/TriMetaverse.git HEAD:dev))',
     ].join('\n'),
     cwd: '/srv/fleet',
     runAs: 'fleet',
