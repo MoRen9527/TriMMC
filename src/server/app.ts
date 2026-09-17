@@ -356,6 +356,18 @@ export function createTriMCApp(env: TriMCEnv) {
           return;
         }
 
+        // ── LG-036 跨面席位通知通道（方案 acaae9fc §一；CEO 批方案 A）──
+        // POST /internal/v1/notify          源席入队（X-Internal-Token 门内+
+        //                                   白名单 m-duty-cos+正名制+4KB+限速）
+        // GET  /internal/v1/notify/outbox   TriMLC 收端拉取（replay；TTL 标记）
+        // POST /internal/v1/notify/confirm  收端状态确认（forwarded/delivered）
+        // GET  /internal/v1/notify/status   源席查询三态（屏扫痛点根治）
+        if (req.url?.startsWith('/internal/v1/notify')) {
+          const { handleNotifyRoutes } = await import('../notify/routes.js');
+          const handled = await handleNotifyRoutes(req, res, req.url ?? '/');
+          if (handled) return;
+        }
+
         // ── GET /internal/v1/tasks ──
         // S7: Query unified task state across all TriLC nodes.
         if (req.url?.startsWith('/internal/v1/tasks') && req.method === 'GET') {
