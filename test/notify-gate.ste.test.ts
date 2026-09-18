@@ -135,4 +135,31 @@ describe('LG-036 STE gate: TriMMC notify 端A HTTP 五点', () => {
     assert.equal(r2.json?.accepted, 'duplicate', '同 message_id → duplicate 不重排');
     assert.equal(r2.json?.message_id, uniq);
   });
+  it('查漏⑥SEC ledger 零 body + 逆迁移 409 + invalid to/urgent 400', async () => {
+    // invalid urgent 值（非 urgent|normal）→ 400 必填缺
+    const badUrgent = await req('POST', '/internal/v1/notify', validBody({ urgent: 'high', message_id: 'ste-gap-u1' }), TOKEN);
+    assert.equal(badUrgent.status, 400, 'invalid urgent → 400');
+    // invalid confirm to（非 forwarded|delivered）→ 400
+    const uniq = 'ste-gap-' + Date.now();
+    const mk = await req('POST', '/internal/v1/notify', validBody({ message_id: uniq }), TOKEN);
+    if (mk.status === 429) { assert.equal(mk.status, 429, '限速窗让位'); return; }
+    const badTo = await req('POST', '/internal/v1/notify/confirm', { message_id: uniq, to: 'read' }, TOKEN);
+    assert.equal(badTo.status, 400, 'invalid to → 400');
+    // 逆迁移：delivered→forwarded → 409（线性三态不容回退）
+    await req('POST', '/internal/v1/notify/confirm', { message_id: uniq, to: 'forwarded' }, TOKEN);
+    await req('POST', '/internal/v1/notify/confirm', { message_id: uniq, to: 'delivered' }, TOKEN);
+    const rev = await req('POST', '/internal/v1/notify/confirm', { message_id: uniq, to: 'forwarded' }, TOKEN);
+    assert.equal(rev.status, 409, 'delivered→forwarded 逆迁移 → 409');
+    // SEC：ledger 全行可解析+零 body 键+正文零泄漏
+    const ledgerPath = OUTBOX.replace(/\.json$/, '') + '-ledger.jsonl';
+    assert.ok(existsSync(ledgerPath), 'ledger 落盘');
+    const lines = readFileSync(ledgerPath, 'utf-8').split('\n').filter((l) => l.trim() !== '');
+    assert.ok(lines.length >= 1);
+    for (const l of lines) {
+      const rec = JSON.parse(l) as Record<string, unknown>;
+      assert.equal('body' in rec, false, 'ledger 行零 body 键（SEC 白名单）');
+    }
+    const raw = readFileSync(ledgerPath, 'utf-8');
+    assert.ok(!raw.includes('组件门测试通知'), '正文零入账');
+  });
 });
