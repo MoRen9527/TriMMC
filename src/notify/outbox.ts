@@ -39,6 +39,7 @@ export const RATE_LIMIT_PER_MINUTE = 10;
 /** 目标席名册（MVP=bod 单条；P2 扩面照此册）。 */
 export const TARGET_SEAT_ROSTER: Record<string, { daemon: string }> = {
   bod: { daemon: 'trimlc' },
+  coo: { daemon: 'trimlc' },  // FADE-010 首落③：coo 副投（候批信 bod+coo 双投固定路由）
 };
 /** 源席白名单（MVP=m-duty-cos 单条）。 */
 export const SOURCE_SEAT_WHITELIST = ['m-duty-cos'];
