@@ -4,6 +4,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import {
   enqueueNotify,
+  enqueueNotifyBroadcast,
   pullPending,
   queryStatus,
   transitionStatus,
@@ -48,6 +49,26 @@ export async function handleNotifyRoutes(
       body: str('body'),
       message_id: str('message_id') || undefined,
     };
+    // ── LG-052 广播支路：targets（数组或逗号分隔串）present → 一稿多投展开制 ──
+    let targets: string[] | undefined;
+    if (Array.isArray(body.targets)) {
+      targets = body.targets.map((x) => String(x).trim()).filter((x) => x.length > 0);
+    } else if (typeof body.targets === 'string' && (body.targets as string).trim().length > 0) {
+      targets = (body.targets as string).split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+    }
+    if (targets && targets.length > 0) {
+      if (!input.source_seat || !input.target_daemon || !input.urgent || !input.title || !input.body) {
+        json(res, 400, { ok: false, error: 'bad_request', message: '广播面 source_seat/target_daemon/urgent(urgent|normal)/title/body 必填（targets 代 target_seat）' });
+        return true;
+      }
+      const outcome = enqueueNotifyBroadcast({ ...input, targets });
+      if (!outcome.ok) {
+        json(res, outcome.statusCode, { ok: false, error: outcome.error, message: outcome.message });
+        return true;
+      }
+      json(res, 200, { ok: true, broadcast: true, accepted: outcome.accepted, duplicates: outcome.duplicates, results: outcome.results });
+      return true;
+    }
     if (!input.source_seat || !input.target_daemon || !input.target_seat || !input.urgent || !input.title || !input.body) {
       json(res, 400, { ok: false, error: 'bad_request', message: 'source_seat/target_daemon/target_seat/urgent(urgent|normal)/title/body 全必填' });
       return true;

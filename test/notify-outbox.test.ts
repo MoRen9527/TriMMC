@@ -6,11 +6,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   enqueueNotify,
+  enqueueNotifyBroadcast,
   pullPending,
   queryStatus,
   transitionStatus,
   NOTIFY_BODY_MAX_BYTES,
   OUTBOX_MAX_PENDING,
+  SOURCE_SEAT_WHITELIST,
+  TARGET_SEAT_ROSTER,
 } from '../src/notify/outbox.js';
 
 describe('notify outbox（TriMMC 发端）', () => {
@@ -119,5 +122,120 @@ describe('notify outbox（TriMMC 发端）', () => {
     assert.equal(pullPending(path).length, 1, '未确认=重出（断链重投语义）');
     transitionStatus('ntf-test-1', 'forwarded', path);
     assert.equal(pullPending(path).length, 0, '确认 forwarded 后不重出');
+  });
+});
+
+// ── LG-052 阶段一：一稿多投广播（展开制）──
+describe('notify broadcast（LG-052 一稿多投）', () => {
+  const dirs: string[] = [];
+  function freshPath(): string {
+    const dir = mkdtempSync(join(tmpdir(), 'trimc-notify-bc-'));
+    dirs.push(dir);
+    return join(dir, 'notify-outbox.json');
+  }
+  after(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }); });
+
+  const bc = (path: string, over: Record<string, unknown> = {}) => enqueueNotifyBroadcast({
+    source_seat: 'bod', target_daemon: 'trimlc',
+    targets: ['m-fsd', 'm-cto', 'm-coo'],
+    urgent: 'normal', title: '全席通报', body: '通道口径公告', message_id: 'ntf-bc-1', ...over,
+  }, path);
+
+  it('名册扩面：13 员工席 opsName 在册+bod/coo 保留', () => {
+    for (const seat of ['m-cos', 'm-cao', 'm-cfo', 'm-cho', 'm-cmo', 'm-coo', 'm-cpo', 'm-cto', 'm-cso', 'm-fsd', 'm-rdt', 'm-dee', 'm-ste']) {
+      assert.ok(TARGET_SEAT_ROSTER[seat], `${seat} 应在册`);
+      assert.equal(TARGET_SEAT_ROSTER[seat].daemon, 'trimlc');
+    }
+    assert.ok(TARGET_SEAT_ROSTER.bod && TARGET_SEAT_ROSTER.coo, '治理短名保留');
+    assert.equal(Object.keys(TARGET_SEAT_ROSTER).length, 15, '13 员工+bod/coo 治理短名');
+  });
+
+  it('白名单扩面：治理链三席入列+m-duty-cos 保留', () => {
+    for (const s of ['bod', 'm-cos', 'm-coo', 'm-duty-cos']) {
+      assert.ok(SOURCE_SEAT_WHITELIST.includes(s), `${s} 应在白名单`);
+    }
+  });
+
+  it('广播展开：N 件逐席派生 id，三态逐席独立', () => {
+    const path = freshPath();
+    const r = bc(path);
+    assert.equal(r.ok, true);
+    if (!r.ok) return;
+    assert.equal(r.results.length, 3);
+    assert.equal(r.accepted, 3);
+    assert.deepEqual(r.results.map((x) => x.message_id), ['ntf-bc-1--m-fsd', 'ntf-bc-1--m-cto', 'ntf-bc-1--m-coo']);
+    // 逐席独立三态：只确认 m-fsd 件，余两件不受影响
+    assert.equal(transitionStatus('ntf-bc-1--m-fsd', 'forwarded', path).ok, true);
+    const st = queryStatus(null, path);
+    assert.equal(st.find((m) => m.message_id === 'ntf-bc-1--m-fsd')?.status, 'forwarded');
+    assert.equal(st.find((m) => m.message_id === 'ntf-bc-1--m-cto')?.status, 'pending');
+    assert.equal(st.find((m) => m.message_id === 'ntf-bc-1--m-coo')?.status, 'pending');
+  });
+
+  it('广播幂等：同基 id 重播=逐席 duplicate+箱内不增', () => {
+    const path = freshPath();
+    bc(path);
+    const r2 = bc(path);
+    assert.equal(r2.ok, true);
+    if (!r2.ok) return;
+    assert.equal(r2.accepted, 0);
+    assert.equal(r2.duplicates, 3);
+    assert.equal(queryStatus(null, path).length, 3, '箱内仍 3 件');
+  });
+
+  it('整单原子：名册外席在列 → 400 零落箱（无半投）', () => {
+    const path = freshPath();
+    const r = bc(path, { targets: ['m-fsd', 'nobody'] });
+    assert.equal(r.ok, false);
+    if (!r.ok) assert.equal(r.statusCode, 400);
+    assert.equal(queryStatus(null, path).length, 0, '零落箱');
+  });
+
+  it('重复席 → 400 整单拒', () => {
+    const r = bc(freshPath(), { targets: ['m-fsd', 'm-fsd'] });
+    assert.equal(r.ok, false);
+    if (!r.ok) {
+      assert.equal(r.statusCode, 400);
+      assert.equal(r.error, 'duplicate_targets');
+    }
+  });
+
+  it('pending 上限原子性：空间不足整单 503 零落箱', () => {
+    const path = freshPath();
+    const messages = [];
+    for (let i = 0; i < OUTBOX_MAX_PENDING - 1; i++) {
+      messages.push({
+        message_id: `ntf-pre-${i}`, source_seat: 'bod', target_daemon: 'trimlc', target_seat: 'bod',
+        urgent: 'normal', title: `t${i}`, body: 'b', enqueued_at: new Date(Date.now() - 3600_000).toISOString(),
+        status: 'pending', status_history: [{ status: 'accepted', at: new Date().toISOString() }], attempts: 0,
+      });
+    }
+    writeFileSync(path, JSON.stringify({ messages }, null, 2) + '\n', 'utf-8');
+    const r = bc(path); // 需 3 空位，仅余 1 → 503
+    assert.equal(r.ok, false);
+    if (!r.ok) assert.equal(r.statusCode, 503);
+    assert.equal(queryStatus(null, path).length, OUTBOX_MAX_PENDING - 1, '零新增（无半投）');
+  });
+
+  it('限速操作数语义：窗口内既有 9 件（他席目标）广播作第 10 操作可发', () => {
+    const path = freshPath();
+    for (let i = 0; i < 9; i++) {
+      enqueueNotify({ source_seat: 'bod', target_daemon: 'trimlc', target_seat: 'coo', urgent: 'normal', title: `t${i}`, body: 'b' }, path);
+    }
+    const r = bc(path); // 广播=窗口第 10 操作（计 1 不计展开 3 件）→ 放行
+    assert.equal(r.ok, true, '广播计操作数=1，不受展开件数挤兑');
+    // 下一操作（第 11）→ 429
+    const r2 = bc(path, { message_id: 'ntf-bc-2' });
+    assert.equal(r2.ok, false);
+    if (!r2.ok) assert.equal(r2.statusCode, 429);
+  });
+
+  it('单投路径零变化：bod/coo 双投与既有用例同形（回归哨兵）', () => {
+    const path = freshPath();
+    const r = enqueueNotify({ source_seat: 'm-duty-cos', target_daemon: 'trimlc', target_seat: 'bod', urgent: 'normal', title: '候裁决', body: 'x', message_id: 'ntf-reg-1' }, path);
+    assert.equal(r.ok, true);
+    const r2 = enqueueNotify({ source_seat: 'm-duty-cos', target_daemon: 'trimlc', target_seat: 'coo', urgent: 'normal', title: '候裁决', body: 'x', message_id: 'ntf-reg-2' }, path);
+    assert.equal(r2.ok, true);
+    assert.equal(queryStatus(null, path).length, 2);
   });
 });
