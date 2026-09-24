@@ -65,12 +65,19 @@ function storeDutyLetter(path: string, letter: Omit<DutyLetter, 'received_at' | 
   return true;
 }
 
-/** tmux 弹显（非侵入横幅 display-message；成功=true——仅 urgent 面使用）。 */
+/** tmux 弹显（非侵入横幅 display-message；成功=true——仅 urgent 面使用）。
+ *  LG-052 销账挂账修：service=root 身份与值席 tmux server（fleet uid 1001）
+ *  socket 错位——TRIMC_NOTIFY_DUTY_TMUX_SOCK 设定时经 `-S` 旗直达目标 socket
+ *  （SDE 03:0x 取证修形验证）；未设=默认 socket（现行为，信箱语义兜底不回退）。 */
 export async function showTmuxMessage(session: string, title: string, body: string): Promise<boolean> {
   return new Promise((resolveP) => {
     try {
       const text = `${title} | ${body.slice(0, 200)}`;
-      const child = spawn('tmux', ['display-message', '-t', session, text], { stdio: 'ignore' });
+      const sock = process.env.TRIMC_NOTIFY_DUTY_TMUX_SOCK?.trim();
+      const args = sock
+        ? ['-S', sock, 'display-message', '-t', session, text]
+        : ['display-message', '-t', session, text];
+      const child = spawn('tmux', args, { stdio: 'ignore' });
       const timer = setTimeout(() => { try { child.kill(); } catch { /* gone */ } resolveP(false); }, 10_000);
       child.on('close', (code) => { clearTimeout(timer); resolveP(code === 0); });
       child.on('error', () => { clearTimeout(timer); resolveP(false); });
