@@ -147,7 +147,9 @@ describe('notify broadcast（LG-052 一稿多投）', () => {
       assert.equal(TARGET_SEAT_ROSTER[seat].daemon, 'trimlc');
     }
     assert.ok(TARGET_SEAT_ROSTER.bod && TARGET_SEAT_ROSTER.coo, '治理短名保留');
-    assert.equal(Object.keys(TARGET_SEAT_ROSTER).length, 15, '13 员工+bod/coo 治理短名');
+    assert.ok(TARGET_SEAT_ROSTER['m-duty-cos'], '阶段二值席收端在册（daemon=trimmc）');
+    assert.equal(TARGET_SEAT_ROSTER['m-duty-cos'].daemon, 'trimmc');
+    assert.equal(Object.keys(TARGET_SEAT_ROSTER).length, 16, '13 员工+bod/coo 治理短名+值席收端');
   });
 
   it('白名单扩面：治理链三席入列+m-duty-cos 保留', () => {

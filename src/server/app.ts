@@ -14,6 +14,7 @@ import { assemblePipelineOptions } from '../pipeline/assemble.js';
 import type { AgentContract } from '../contracts/agent-contract.js';
 import type { AgentTier } from '../agent-loop/permissions.js';
 import { arbitrate } from '../comm/arbitration.js';
+import { maybeStartDutyConsumerFromEnv, type DutyConsumerHandle } from '../notify/duty-consumer.js';
 import { MirrorStore } from '../mirror/store.js';
 import type { MirrorTaskStatus } from '../mirror/types.js';
 import {
@@ -39,6 +40,9 @@ export function createTriMCApp(env: TriMCEnv) {
   // 心跳超时扫描定时器（heartbeat-dualrun-contract v1.0 §3.3）：
   // 每 10s 扫节点心跳表，超阈值（30s 常规 / 180s degraded）→ markNodeUnknown
   let heartbeatScanTimer: ReturnType<typeof setInterval> | null = null;
+
+  // LG-052 值席收端消费面（env 门：TRIMC_NOTIFY_DUTY_SEATS 未设=零行为）
+  let dutyNotifyConsumer: DutyConsumerHandle | null = null;
 
   // ── M1 Phase-2: Session Bridge（编排层 ↔ 官方 claude 会话）──
   const bridgeOptions: SessionBridgeOptions = {
@@ -701,6 +705,9 @@ export function createTriMCApp(env: TriMCEnv) {
         mirrorStore.scanStaleNodes();
       }, 10_000);
       heartbeatScanTimer.unref?.();
+
+      // LG-052 值席收端消费面：env 门装配（TRIMC_NOTIFY_DUTY_SEATS 未设=零行为）
+      dutyNotifyConsumer = maybeStartDutyConsumerFromEnv();
     },
     get port(): number {
       return env.port;
@@ -710,6 +717,10 @@ export function createTriMCApp(env: TriMCEnv) {
       if (heartbeatScanTimer) {
         clearInterval(heartbeatScanTimer);
         heartbeatScanTimer = null;
+      }
+      if (dutyNotifyConsumer) {
+        dutyNotifyConsumer.stop();
+        dutyNotifyConsumer = null;
       }
       if (server) {
         await new Promise<void>((resolve, reject) => {

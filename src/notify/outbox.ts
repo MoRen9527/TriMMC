@@ -56,6 +56,9 @@ export const TARGET_SEAT_ROSTER: Record<string, { daemon: string }> = {
   'm-rdt': { daemon: 'trimlc' },
   'm-dee': { daemon: 'trimlc' },
   'm-ste': { daemon: 'trimlc' },
+  // LG-052 阶段二：sg 值席收端（跨面定向；daemon=trimmc 即本仓 sg daemon——
+  // 值席消费面 duty-consumer 同进程拉取；本地 TriMLC puller 名册外自动跳过不抢）
+  'm-duty-cos': { daemon: 'trimmc' },
 };
 /** 源席白名单（LG-036 MVP=m-duty-cos；LG-052 扩治理链三席 bod/m-cos/m-coo——
  *  本单只扩通道能力，内容面治理口径不在本单）。 */
@@ -308,6 +311,33 @@ export function enqueueNotifyBroadcast(
     }
   }
   return { ok: true, results, accepted, duplicates };
+}
+
+/** LG-052 阶段二：值席定向拉取（只取 seats 名册内件；attempts 仅对返回件+1——
+ *  与全量 pullPending 隔离，防本地 TriMLC puller 与值席消费面互抢计数；
+ *  TTL 语义照全量（过阈标 expired 不静默删，仅扫本名册件，他件归各自收端）。 */
+export function pullPendingForSeats(
+  seats: string[],
+  pathOverride?: string,
+  now: Date = new Date(),
+): NotifyMessage[] {
+  const path = pathOverride ?? notifyOutboxPath();
+  const doc = readDoc(path);
+  const set = new Set(seats);
+  const pending = doc.messages.filter(
+    (m) => m.status === 'pending' && !m.expired && set.has(m.target_seat),
+  );
+  for (const m of pending) m.attempts += 1;
+  const cutoff = now.getTime() - OUTBOX_TTL_MS;
+  for (const m of doc.messages) {
+    if (m.status === 'pending' && !m.expired && set.has(m.target_seat) && new Date(m.enqueued_at).getTime() < cutoff) {
+      m.expired = true;
+      m.status_history.push({ status: 'expired', at: now.toISOString() });
+      appendLedger(ledgerPathFor(path), { at: now.toISOString(), event: 'expired', message_id: m.message_id });
+    }
+  }
+  writeDocAtomic(path, doc);
+  return pending;
 }
 
 /** 收端拉取（replay）：pending 件按时间序（attempts+1）；TTL 标记不静默删。 */
