@@ -9,7 +9,7 @@
 import type { CronJobPatch } from '@tricompany/agent-core';
 // TASK-TRIMODEL-RECOVERY-LADDER-01 波③：TriModel 直连恢复梯命令族（core=TriCode trimodel-cli，
 // 本 bin 只做 CoreIO 注入+runCli 派发——core 零仓感知，仓特有项在此注入）。
-import { makeCoreIO, runCli, type ProbeReading } from '@trimetaverse/tricode/trimodel-cli';
+import { defaultL2FlagPath, makeCoreIO, runCli, type ProbeReading } from '@trimetaverse/tricode/trimodel-cli';
 import { runConfigSyncApply } from './config-sync/apply.js';
 import { resolveInternalToken } from './internal-token.js';
 
@@ -448,6 +448,7 @@ async function runModelCommand(restArgs: string[]): Promise<void> {
     binName: 'trimmc',
     machine: 'sg-m',
     probes: [cronEngineProbe()],
+    l2FlagPath: defaultL2FlagPath(),
   });
   process.exitCode = await runCli(restArgs, io);
 }
