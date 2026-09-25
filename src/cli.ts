@@ -7,6 +7,9 @@
  */
 
 import type { CronJobPatch } from '@tricompany/agent-core';
+// TASK-TRIMODEL-RECOVERY-LADDER-01 波③：TriModel 直连恢复梯命令族（core=TriCode trimodel-cli，
+// 本 bin 只做 CoreIO 注入+runCli 派发——core 零仓感知，仓特有项在此注入）。
+import { makeCoreIO, runCli, type ProbeReading } from '@trimetaverse/tricode/trimodel-cli';
 import { runConfigSyncApply } from './config-sync/apply.js';
 import { resolveInternalToken } from './internal-token.js';
 
@@ -406,9 +409,52 @@ async function cmdConfigSyncApply(args: Args): Promise<void> {
   }
 }
 
+// ── TriModel 直连恢复梯命令族（波③ 范围②④）────────────────────
+
+/** 旧 bin 名调用识别（argv[1] basename 词干；覆盖 POSIX symlink 与直调命名面）。
+ * 已知限制（技术债如实标记）：Windows npm .cmd/.ps1 shim 的 argv[1]=真实 cli.js 路径，
+ * 调名不达子进程——该面弃用提示候 M3 删旧键窗随文档收口，不静默不假装。 */
+function legacyBinInvocation(oldName: string): boolean {
+  const raw = process.argv[1] ?? '';
+  const stem = (raw.split(/[\\/]/).pop() ?? '').toLowerCase().replace(/\.(cmd|ps1|exe|js|cjs|mjs)$/, '');
+  return stem === oldName;
+}
+
+/** cron engine 探活回调（core status 实时探活用；回调型注入=core 零端点知识）。
+ * 读数面=本机 trimc 服务 /internal/v1/cron/status 值面（可达+ok 即 up）。 */
+function cronEngineProbe(): { name: string; probe: () => Promise<ProbeReading> } {
+  return {
+    name: 'cron-engine',
+    probe: async () => {
+      try {
+        const token = resolveInternalToken();
+        const res = await fetch(`${serviceUrl()}/internal/v1/cron/status`, {
+          headers: token ? { 'X-Internal-Token': token } : {},
+        });
+        return { up: res.ok, detail: res.ok ? 'cron/status 200' : `HTTP ${res.status}` };
+      } catch (err) {
+        return { up: false, detail: err instanceof Error ? err.message : String(err) };
+      }
+    },
+  };
+}
+
+/** `model` 父命令：TriCode core runCli 派发（cron/config-sync 家族命令零触碰；退出码直通）。
+ * CoreIO 注入：who=审计身份（门⑤ 落行）、machine=四象限路由键（joint-plan 问3 21:44 勘正版：
+ * trimmc=sg Linux·M 服务域）、probes=cron engine 值面。 */
+async function runModelCommand(restArgs: string[]): Promise<void> {
+  const io = makeCoreIO({
+    who: 'trimmc-cmd',
+    binName: 'trimmc',
+    machine: 'sg-m',
+    probes: [cronEngineProbe()],
+  });
+  process.exitCode = await runCli(restArgs, io);
+}
+
 // ── dispatch ────────────────────────────────────────────────────
 
-const USAGE = `Usage: trimc <cron|config-sync> ...
+const USAGE = `Usage: trimmc <cron|config-sync|model> ...
 
   cron add    --name <n> --cron "<expr>" [--tz <tz>] --command <cmd> --cwd <dir>
               [--run-as <user>] [--timeout <ms>] [--disabled]
@@ -417,12 +463,22 @@ const USAGE = `Usage: trimc <cron|config-sync> ...
   cron <list|run <id>|log|status|update <id>|remove <id>>
 
   config-sync apply [--fleet-root <dir>] [--config-dir <dir>]
-                                        (apply the fleet five-dim sync bundle)`;
+                                        (apply the fleet five-dim sync bundle)
+
+  model <restore-direct|config|status>   (TriModel 兜底直连恢复梯命令族；无参=help)`;
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
+  // 正名过渡期（范围④）：旧名调用→单行弃用引导（stderr，不阻塞），随后照常执行。
+  if (legacyBinInvocation('trimc')) {
+    console.error('[trimc] 提示：命令已正名为 trimmc（trimc=过渡期别名，M3 版本移除）；本次照常执行。');
+  }
   if (argv.length === 0) {
     console.log(USAGE);
+    return;
+  }
+  if (argv[0] === 'model') {
+    await runModelCommand(argv.slice(1));
     return;
   }
   if (argv[0] === 'cron' && argv.length === 1) {
