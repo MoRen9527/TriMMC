@@ -453,9 +453,94 @@ async function runModelCommand(restArgs: string[]): Promise<void> {
   process.exitCode = await runCli(restArgs, io);
 }
 
+// ── LG-058 P1 config 卡面命令族（daemon 进程内执行；CLI=触发器）──
+// 形态对标 TriRLC/TriMLC config 家族（N4）；HTTP 复用既有 cronRequest（已带
+// X-Internal-Token 三链解析：env→docker/.env→cwd 探测链，internal-token.ts）。
+// 梯语义=§4.3 层级合并裁：env 逃生门 > 卡面 cache（fresh/stale-grace）>
+// fleet bundle > 常量兜底——「即时生效」要求刷新与 env apply 落 daemon 运行态。
+
+function ts(n: unknown): string {
+  return typeof n === 'number' && n > 0 ? new Date(n).toISOString() : '-';
+}
+
+async function cmdConfig(args: string[]): Promise<void> {
+  const sub = args[0] ?? 'show';
+  try {
+    switch (sub) {
+      case 'pull': {
+        const r = await cronRequest('POST', '/internal/v1/config/pull') as {
+          ok?: boolean; mode?: string; defaultModel?: string | null; source?: string;
+          message?: string; attribution?: string | null;
+        };
+        console.log(`config pull: ${r.ok ? 'OK' : 'FAILED'} (mode=${r.mode})`);
+        console.log(`  default model: ${r.defaultModel ?? '-'}   source: ${r.source}`);
+        console.log(`  ${r.message ?? ''}`);
+        if (r.attribution) console.log(`  attribution: ${r.attribution}`);
+        if (!r.ok) process.exitCode = 1;
+        break;
+      }
+      case 'show':
+      case 'cache': {
+        if (sub === 'cache' && args[1] === 'clear') {
+          const r = await cronRequest('DELETE', '/internal/v1/config/cache') as {
+            hadCache?: boolean; removedFiles?: string[];
+          };
+          console.log(`config cache clear: done (hadCache=${!!r.hadCache}, removed=${(r.removedFiles ?? []).length} file(s))`);
+          console.log('  梯语义验证：接 `config pull` 强制回 tier1；daemon env 现值待下次成功 pull 覆盖');
+          break;
+        }
+        const r = await cronRequest('GET', '/internal/v1/config/show') as {
+          face?: string; hasCache?: boolean; fresh?: boolean; staleGrace?: boolean;
+          defaultModel?: string | null; effectiveModel?: string | null; effectiveSource?: string;
+          fetchedAt?: number | null; expiresAt?: number | null; refreshIntervalS?: number | null;
+          providerCount?: number; providers?: string[];
+          lastFetchAt?: number | null; lastFetchError?: string | null; lastAttribution?: string | null;
+          ladder?: { model?: string; source?: string } | null;
+        };
+        console.log(`config show (face=${r.face}):`);
+        console.log(`  effective model: ${r.effectiveModel ?? '-'}   source: ${r.effectiveSource}`);
+        if (r.hasCache) {
+          console.log(`  cache: ${r.fresh ? 'fresh' : r.staleGrace ? 'stale-grace (tier2.5)' : 'expired'}  fetched ${ts(r.fetchedAt)}  expires ${ts(r.expiresAt)}  refresh=${r.refreshIntervalS ?? '-'}s`);
+          console.log(`  providers(${r.providerCount}): ${(r.providers ?? []).join(', ') || '-'}`);
+        } else {
+          console.log('  cache: none (bundle/env 梯语义)');
+        }
+        if (r.ladder) {
+          console.log(`  ladder(§4.3): model=${r.ladder.model ?? '-'}  source=${r.ladder.source ?? '-'}  (env 逃生门 > 卡面 > fleet bundle > 常量)`);
+        }
+        console.log(`  last fetch: ${ts(r.lastFetchAt)}${r.lastFetchError ? `  error: ${r.lastFetchError}` : ''}${r.lastAttribution ? `  attribution: ${r.lastAttribution}` : ''}`);
+        break;
+      }
+      case 'verify': {
+        const r = await cronRequest('POST', '/internal/v1/config/verify') as {
+          ok?: boolean; connectivity?: string; credentials?: string; decryptHealth?: string;
+          cardPresent?: boolean; defaultModel?: string | null; providers?: number; message?: string;
+        };
+        console.log(`config verify: ${r.ok ? 'HEALTHY' : 'UNHEALTHY'}`);
+        console.log(`  connectivity: ${r.connectivity}   credentials: ${r.credentials}   decrypt: ${r.decryptHealth}`);
+        console.log(`  card_present: ${r.cardPresent}   default model: ${r.defaultModel ?? '-'}   providers: ${r.providers ?? 0}`);
+        console.log(`  ${r.message ?? ''}`);
+        if (!r.ok) process.exitCode = 1;
+        break;
+      }
+      default:
+        console.error(`ERROR: unknown config subcommand '${sub}'. Usage: trimmc config <pull|show|verify|cache [clear]>`);
+        process.exitCode = 1;
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/fetch failed|ECONNREFUSED/i.test(msg)) {
+      console.error(`ERROR: daemon 无响应（${serviceUrl()}）——先起 trimmc daemon 再试`);
+    } else {
+      console.error(`ERROR: ${msg}`);
+    }
+    process.exitCode = 1;
+  }
+}
+
 // ── dispatch ────────────────────────────────────────────────────
 
-const USAGE = `Usage: trimmc <cron|config-sync|model> ...
+const USAGE = `Usage: trimmc <cron|config-sync|config|model> ...
 
   cron add    --name <n> --cron "<expr>" [--tz <tz>] --command <cmd> --cwd <dir>
               [--run-as <user>] [--timeout <ms>] [--disabled]
@@ -465,6 +550,8 @@ const USAGE = `Usage: trimmc <cron|config-sync|model> ...
 
   config-sync apply [--fleet-root <dir>] [--config-dir <dir>]
                                         (apply the fleet five-dim sync bundle)
+
+  config <pull|show|verify|cache [clear]>  (TriModel 卡面配置族 LG-058；梯=§4.3)
 
   model <restore-direct|config|status>   (TriModel 兜底直连恢复梯命令族；无参=help)`;
 
@@ -484,6 +571,10 @@ async function main(): Promise<void> {
   }
   if (argv[0] === 'cron' && argv.length === 1) {
     console.log(USAGE);
+    return;
+  }
+  if (argv[0] === 'config') {
+    await cmdConfig(argv.slice(1));
     return;
   }
   if (argv[0] === 'config-sync') {

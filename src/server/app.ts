@@ -30,11 +30,27 @@ import {
   resolveDefaultModel,
   resolveFlashModel,
 } from '../config-sync/index.js';
+import { defaultConfigDir } from '../config-sync/status.js';
+// LG-058 P1：TriModel 卡面 tier1 拉取（config-cache 泛化服务域面接入）
+import {
+  applyKeyCacheToEnvironment,
+  clearKeyCache,
+  describeConfig,
+  getKeyCache,
+  initKeyCache,
+  onKeyCacheUpdated,
+  refreshNow,
+  stopKeyCache,
+  verifyPull,
+} from '../config/key-cache.js';
+import { resolveDefaultModelDetailed } from '../config-sync/default-model.js';
 
 export function createTriMCApp(env: TriMCEnv) {
   const taskController = new TaskController();
   const mirrorStore = new MirrorStore();
-  const modelClient = createModelClient();
+  // LG-058 P1：let——卡面 cache 更新回调需重建客户端（trimodel createModelClient
+  // 构造期冻结 config，env apply 后须重读；RLC 形态=每用例现场建，此处闭包单例）
+  let modelClient = createModelClient();
   let server: Server | null = null;
 
   // 心跳超时扫描定时器（heartbeat-dualrun-contract v1.0 §3.3）：
@@ -616,6 +632,52 @@ export function createTriMCApp(env: TriMCEnv) {
           return;
         }
 
+        // ── LG-058 P1：config 卡面五路由（形态对标 TriRLC；§4.3 层级合并投影）──
+        // CLI 经此触发 daemon 进程内执行（「即时生效」=刷新+env apply 落运行态）。
+        if (req.url === '/internal/v1/config/pull' && req.method === 'POST') {
+          try {
+            const result = await refreshNow();
+            res.writeHead(200, { 'content-type': 'application/json' });
+            res.end(JSON.stringify(result));
+          } catch (err) {
+            res.writeHead(500, { 'content-type': 'application/json' });
+            res.end(JSON.stringify({ error: 'config_pull_failed', message: (err as Error).message }));
+          }
+          return;
+        }
+        if (req.url === '/internal/v1/config/show' && req.method === 'GET') {
+          // cache 梯核心字段四域面同构（A5 四面对表）+ 服务域面 §4.3 全梯
+          // 归因扩展字段 ladder（env 逃生门/卡面/bundle/常量合并视图）。
+          const show = describeConfig();
+          const ladder = await resolveDefaultModelDetailed();
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ object: 'config.show', ...show, ladder }));
+          return;
+        }
+        if (req.url === '/internal/v1/config/verify' && req.method === 'POST') {
+          try {
+            const report = await verifyPull();
+            res.writeHead(200, { 'content-type': 'application/json' });
+            res.end(JSON.stringify({ object: 'config.verify', ...report }));
+          } catch (err) {
+            res.writeHead(500, { 'content-type': 'application/json' });
+            res.end(JSON.stringify({ error: 'config_verify_failed', message: (err as Error).message }));
+          }
+          return;
+        }
+        if (req.url === '/internal/v1/config/cache' && req.method === 'GET') {
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ object: 'config.cache', ...describeConfig() }));
+          return;
+        }
+        if (req.url === '/internal/v1/config/cache' && req.method === 'DELETE') {
+          const result = clearKeyCache();
+          console.log(`[trimc:keys] config cache cleared via internal API (hadCache=${result.hadCache}, removed=${result.removedFiles.length})`);
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ object: 'config.cache-cleared', ...result }));
+          return;
+        }
+
         // ── POST /internal/v1/events/replay ──
         // Offline event replay from TriLC nodes. CTO-008-M §3.3.2.
         // M.5: Conflict arbitration integrated — arbitrate() detects double-assignment etc.
@@ -697,6 +759,29 @@ export function createTriMCApp(env: TriMCEnv) {
 
       console.log(`[trimc] listening on :${env.port}`);
 
+      // ── LG-058 P1：TriModel 卡面 tier1 拉取接线（§4.3 梯；boot 非阻塞失败不拦启动）──
+      // 形态对标 TriRLC app.ts start() Step 2b。TRIMC_TRIMODEL_API_URL 未设=
+      // tier1 关闭（env/bundle/常量梯照常——部署面未配端点不损既有行为）。
+      try {
+        onKeyCacheUpdated((cache) => {
+          applyKeyCacheToEnvironment(cache);
+          modelClient = createModelClient();
+        });
+        const trimodelApiUrl = process.env.TRIMC_TRIMODEL_API_URL;
+        if (trimodelApiUrl) {
+          await initKeyCache(trimodelApiUrl, defaultConfigDir(), process.env.TRIMODEL_API_TOKEN);
+          const initialKeyCache = getKeyCache();
+          if (initialKeyCache) {
+            applyKeyCacheToEnvironment(initialKeyCache);
+            modelClient = createModelClient();
+          }
+        } else {
+          console.warn('[trimc:keys] TRIMC_TRIMODEL_API_URL 未设——卡面 tier1 关闭（env/bundle 梯照常）');
+        }
+      } catch (err) {
+        console.warn('[trimc:keys] key cache init failed (continue boot):', (err as Error).message);
+      }
+
       // Cron scheduler：server listen 后装配（stale-run 恢复 + 调度循环）
       await cronService?.start();
 
@@ -713,6 +798,7 @@ export function createTriMCApp(env: TriMCEnv) {
       return env.port;
     },
     async stop(): Promise<void> {
+      stopKeyCache();
       cronService?.stop();
       if (heartbeatScanTimer) {
         clearInterval(heartbeatScanTimer);
