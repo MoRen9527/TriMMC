@@ -1,5 +1,5 @@
 // ── M.5 Conflict Arbitration Unit Tests ──
-// Tests for TriMC/src/comm/arbitration.ts
+// Tests for TriMMC/src/comm/arbitration.ts
 // Covers: task double-assignment, version behind, idempotent tool calls, passthrough.
 
 import { describe, it, beforeEach } from 'node:test';

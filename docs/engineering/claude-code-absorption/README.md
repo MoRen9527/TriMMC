@@ -2,8 +2,8 @@
 
 > **Owner**: CTO 小狄 (CTO-003)
 > **Status**: Phase 1–4 Complete (25/25 PASS each, 小全+小柯 verified)
-> **Source**: Claude Code 2.1.88 vendor (`TriMC/vendor/claude-code/src/`)
-> **Target**: TriMC agent architecture (`TriMC/src/agent-loop/`)
+> **Source**: Claude Code 2.1.88 vendor (`TriMMC/vendor/claude-code/src/`)
+> **Target**: TriMMC agent architecture (`TriMMC/src/agent-loop/`)
 
 ## Overview
 
@@ -27,7 +27,7 @@ Phase 4: Tool registry Phase 4: Auto-approve    Phase 4: —               Phase
 
 ## Key Findings
 
-1. **TriMC currently at 0–15% of Claude Code's agent infrastructure**
+1. **TriMMC currently at 0–15% of Claude Code's agent infrastructure**
    - Loop: ~10-15% (basic while-true, no streaming/compaction/hooks)
    - Cache: 0% (no cache_control markers)
    - Sub-agent: 0% (no AgentTool, no spawn router)

@@ -19,7 +19,7 @@
 
 ### 任务范围
 
-实现 `TriMC/src/task-controller/controller.ts` 的基础任务生命周期管理，取代当前仅有的 `acceptPlaceholder()` 空壳。
+实现 `TriMMC/src/task-controller/controller.ts` 的基础任务生命周期管理，取代当前仅有的 `acceptPlaceholder()` 空壳。
 
 ### 功能要求
 
@@ -61,7 +61,7 @@ running → cancelled
 
 ### 自测要求
 
-- 测试文件：`TriMC/test/task-controller.test.ts`（放入 `test/` 目录，与项目现有测试一致）
+- 测试文件：`TriMMC/test/task-controller.test.ts`（放入 `test/` 目录，与项目现有测试一致）
 - 覆盖：创建/查询/列表/状态转换/终态保护/非法状态抛错/边界（不存在的 taskId）
 - 目标：≥90% 行覆盖
 - 使用项目现有测试基础设施：`node --import tsx --test`
@@ -78,7 +78,7 @@ running → cancelled
 
 ### 任务范围
 
-构建 `TriMC/scripts/validate.mjs`，作为编码积木的自动化质量门禁工具。
+构建 `TriMMC/scripts/validate.mjs`，作为编码积木的自动化质量门禁工具。
 
 ### 验证器功能
 
@@ -118,7 +118,7 @@ node scripts/validate.mjs [--target <file-or-dir>]
 
 ### 验证器自测
 
-- 先在 TriMC 现有 9 个测试文件上运行，确认能产出合法 JSON
+- 先在 TriMMC 现有 9 个测试文件上运行，确认能产出合法 JSON
 - 再针对小全的 `test/task-controller.test.ts` 运行验证
 - 记录两次运行的完整输出
 
@@ -186,7 +186,7 @@ Token 消耗作为 LLM 原生开发模式的直接成本指标，纳入 CTO 审�
 **CPO 升级项**：Token/Credit 统一统计应作为产品需求路由到 CPO（小乔）评估——
 - TriStaciss 内部有自身的 token 消耗统计，对外（TriModel）可能以 **Credit** 为单位结算
 - TriModel 是否需要提供统一的 `TokenUsage` / `CreditUsage` 统计接口（provider-agnostic）
-- 该接口是否作为 TriMC agent loop 的标准 observability 指标
+- 该接口是否作为 TriMMC agent loop 的标准 observability 指标
 - 不影响当前 CTO-007 烟雾测试：先用会话估算跑通，后续接入统一统计后再回填精度 |
 
 ### CTO 审查结论格式
@@ -204,9 +204,9 @@ Token：端到端 [N]K | 人均 [N]K | 效率比 [N] 行/Ktoken
 
 | 序号 | 路径 | 负责人 | 类型 |
 |------|------|--------|------|
-| 1 | `TriMC/src/task-controller/controller.ts` | 小全 | 修改 |
-| 2 | `TriMC/test/task-controller.test.ts` | 小全 | 新建 |
-| 3 | `TriMC/scripts/validate.mjs` | 小柯 | 新建 |
+| 1 | `TriMMC/src/task-controller/controller.ts` | 小全 | 修改 |
+| 2 | `TriMMC/test/task-controller.test.ts` | 小全 | 新建 |
+| 3 | `TriMMC/scripts/validate.mjs` | 小柯 | 新建 |
 | 4 | 验证报告（小全积木） | 小柯 | 输出 |
 | 5 | CTO review sign-off | 小狄 | 审查 |
 

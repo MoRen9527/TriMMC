@@ -1,9 +1,9 @@
 # Phase 1 吸收教程：Claude Code 核心 Loop
 
 **Trainer**：小吴（RAndDTrainer）
-**蓝本**：`TriMC/docs/engineering/claude-code-absorption/phase-1-core-loop.md`（CTO 小狄，2026-07-17）
-**目标读者**：需要接手 TriMC agent-loop 代码的研发新人
-**前提**：已读过 `TriMC/AGENTS.md` 和 `TriMC/README.md`，了解 TriMC 是服务域主控模块
+**蓝本**：`TriMMC/docs/engineering/claude-code-absorption/phase-1-core-loop.md`（CTO 小狄，2026-07-17）
+**目标读者**：需要接手 TriMMC agent-loop 代码的研发新人
+**前提**：已读过 `TriMMC/AGENTS.md` 和 `TriMMC/README.md`，了解 TriMMC 是服务域主控模块
 **配套吸收计划**：CTO-003 Phase 1-4，本教程随吸收计划推进同步更新
 **当前版本**：Phase 1 核心 Loop（`phase-1-core-loop.md` 完成）
 
@@ -15,11 +15,11 @@
 
 ### 1.1 一句话
 
-**我们把 Claude Code 2.1.88 的 agent 主循环（1730 行）完整拆解成了 337 行的吸收分析文档，并标记了 TriMC 当前实现（181 行）与它的差距。**
+**我们把 Claude Code 2.1.88 的 agent 主循环（1730 行）完整拆解成了 337 行的吸收分析文档，并标记了 TriMMC 当前实现（181 行）与它的差距。**
 
 ### 1.2 这个问题为什么重要
 
-TriMC 的 agent-loop 是服务域的核心引擎——所有任务控制、工具调度、模型调用都在这个循环里跑。当前实现是一个「能跑通」的 181 行 while-true：
+TriMMC 的 agent-loop 是服务域的核心引擎——所有任务控制、工具调度、模型调用都在这个循环里跑。当前实现是一个「能跑通」的 181 行 while-true：
 
 - 调模型 → 拿结果 → 有 tool_use 就执行 → 结果追加到历史 → 下一轮
 - 能处理 6 个内置工具，最多跑 25 轮
@@ -33,7 +33,7 @@ TriMC 的 agent-loop 是服务域的核心引擎——所有任务控制、工�
 - 用户中断了怎么办（abort handling 两条路径）
 - 工具调用如何不阻塞（streaming executor 边流式接收边执行）
 
-这些 TriMC 目前都没有。**Phase 1 吸收分析的产出，就是把「都没有」变成「都知道缺什么、先补什么」**。
+这些 TriMMC 目前都没有。**Phase 1 吸收分析的产出，就是把「都没有」变成「都知道缺什么、先补什么」**。
 
 ### 1.3 学习本教程后的收获
 
@@ -63,13 +63,13 @@ query(params)            ← 外层：命令生命周期（通知、清理、队
 - **外层**管「一次 agent 会话的开始和结束」
 - **内层**管「每一轮 turn 的迭代逻辑」
 
-TriMC 目前只有内层（`agentLoop()`），这是正确的——我们先吸收内层，外层按需补。
+TriMMC 目前只有内层（`agentLoop()`），这是正确的——我们先吸收内层，外层按需补。
 
 ### 2.2 四种数据结构的分工
 
 Claude Code 把循环的输入拆成四种结构：
 
-| 结构 | 类比 | 可变？ | TriMC 对应 |
+| 结构 | 类比 | 可变？ | TriMMC 对应 |
 |------|------|--------|------------|
 | `QueryParams` | 餐厅的菜单（顾客点了什么） | ❌ 不可变 | `AgentLoopOptions` |
 | `QueryConfig` | 餐厅的营业执照（能做什么） | ❌ 不可变 | 环境变量/配置 |
@@ -83,7 +83,7 @@ Claude Code 把循环的输入拆成四种结构：
 这是整个吸收分析里**最重要的一个协议**——不是最复杂的，但是最基础、最容易在一开始就做对的。
 
 ```typescript
-// ❌ 就地修改（TriMC 当前做法）
+// ❌ 就地修改（TriMMC 当前做法）
 state.messages.push(assistantMsg);    // 改了原来的数组
 state.messages.push(...toolResults);  // 又改了
 state.turnCount++;                     // 改了数字
@@ -118,15 +118,15 @@ state = {
 └─────────────────────────────────────────────────┘
 ```
 
-TriMC 当前实现等价于：Phase B（非流式）→ Phase D（顺序执行工具）→ 循环。缺少 Phase A 的预处理和 Phase C 的自愈能力。
+TriMMC 当前实现等价于：Phase B（非流式）→ Phase D（顺序执行工具）→ 循环。缺少 Phase A 的预处理和 Phase C 的自愈能力。
 
 ---
 
 ## 3. 先用最小 MVP 跑通全流程
 
-### 3.1 跑起来：TriMC 当前 agent-loop 的完整走读
+### 3.1 跑起来：TriMMC 当前 agent-loop 的完整走读
 
-打开 `TriMC/src/agent-loop/loop.ts`（181 行），我们从入口一路走到出口。
+打开 `TriMMC/src/agent-loop/loop.ts`（181 行），我们从入口一路走到出口。
 
 #### 入口：`agentLoop(options)`
 
@@ -181,7 +181,7 @@ while (true):
 ### 3.2 验证：如何确认它跑通了
 
 ```bash
-cd TriMC
+cd TriMMC
 npm test -- --testPathPattern="agent"  # 运行 agent-loop 相关测试
 ```
 
@@ -202,7 +202,7 @@ npm test -- --testPathPattern="agent"  # 运行 agent-loop 相关测试
 
 ### 4.1 入口层：从 `agentLoop(options)` 到 `queryLoop(params)`
 
-TriMC 的 `AgentLoopOptions`（8 个字段）对应 Claude Code 的 `QueryParams`（20+ 字段）。差距不是「写更多字段」，而是 Claude Code 把入口分成了三层：
+TriMMC 的 `AgentLoopOptions`（8 个字段）对应 Claude Code 的 `QueryParams`（20+ 字段）。差距不是「写更多字段」，而是 Claude Code 把入口分成了三层：
 
 ```
 QueryParams（不可变输入：systemPrompt, maxTurns, userContext...）
@@ -210,11 +210,11 @@ QueryConfig（会话级开关：streamingToolExecution, isAnt, fastMode...）
 QueryDeps（可替换能力：callModel, autocompact, microcompact, uuid...）
 ```
 
-TriMC 当前把所有配置都塞在 `AgentLoopOptions` 里，这在小规模 OK，但随着 compaction、hooks、attachment pipeline 等能力加入，需要提前规划分层。**先不用改，但要记住这个三明治模型**。
+TriMMC 当前把所有配置都塞在 `AgentLoopOptions` 里，这在小规模 OK，但随着 compaction、hooks、attachment pipeline 等能力加入，需要提前规划分层。**先不用改，但要记住这个三明治模型**。
 
 ### 4.2 参数层：State 的 10 个字段 vs 3 个字段
 
-| Claude Code State 字段 | TriMC State 字段 | 用途 |
+| Claude Code State 字段 | TriMMC State 字段 | 用途 |
 |------------------------|-----------------|------|
 | `messages: Message[]` | `messages: Message[]` | ✅ 已对齐 |
 | `toolUseContext` | 无 | 工具上下文（文件权限、工作目录等） |
@@ -227,11 +227,11 @@ TriMC 当前把所有配置都塞在 `AgentLoopOptions` 里，这在小规模 OK
 | `stopHookActive` | 无 | 本轮 stop hook 是否激活 |
 | `transition: string` | 无 | 本轮状态转换原因（next_turn / collapse_drain_retry ...） |
 
-**关键理解**：State 的字段数量和循环的 continue 点数量正相关。TriMC 只有 1 个 continue 点（tool exec 后 always continue），所以 3 个字段够用。Claude Code 有 11 个 continue 点，每个点都可能修改不同的字段，因此需要 10 个字段 + 显式 transition 标记。
+**关键理解**：State 的字段数量和循环的 continue 点数量正相关。TriMMC 只有 1 个 continue 点（tool exec 后 always continue），所以 3 个字段够用。Claude Code 有 11 个 continue 点，每个点都可能修改不同的字段，因此需要 10 个字段 + 显式 transition 标记。
 
 ### 4.3 分发层：从「一个 continue 点」到「11 个 continue 点」
 
-当前 TriMC 的决策树：
+当前 TriMMC 的决策树：
 
 ```
 有 tool_use? → 是 → 执行工具 → 继续循环
@@ -255,7 +255,7 @@ Claude Code 的决策树（简化）：
 
 ### 4.4 业务层：Error Recovery Cascade 详解
 
-这是整个吸收分析中**杠杆率最高**的一个模式。TriMC 当前：
+这是整个吸收分析中**杠杆率最高**的一个模式。TriMMC 当前：
 
 ```typescript
 catch (err) {
@@ -299,7 +299,7 @@ Claude Code 不只是 `state.messages.push()`。它区分多种消息类型：
 - **attachment 消息**：附件管线注入的系统消息
 - **task summary 消息**：定期任务摘要
 
-每种消息的注入时机和优先级不同。TriMC 目前只处理前两种。
+每种消息的注入时机和优先级不同。TriMMC 目前只处理前两种。
 
 ### 4.6 校验层：Stop Hooks 和 Token Budget
 
@@ -309,7 +309,7 @@ Claude Code 不只是 `state.messages.push()`。它区分多种消息类型：
 - 消耗超过 90% 总预算 → 注入提醒消息（「你的 token 快用完了，请尽快收尾」）
 - 连续 3 轮 token 增量 < 500 → 对话已进入「收益递减」→ 自动结束
 
-这两层校验在 Claude Code 中是独立的决策点，不是耦合在循环逻辑里的。TriMC 吸收时也应该保持独立。
+这两层校验在 Claude Code 中是独立的决策点，不是耦合在循环逻辑里的。TriMMC 吸收时也应该保持独立。
 
 ---
 
@@ -474,7 +474,7 @@ Agent Loop 核心骨架：
 6. 工具有策略：流式执行（边收边做）优先于批量执行（全收再做）
 7. 预算有护栏：90% 提醒 + 连续递减检测
 
-当前 TriMC → 生产级，按 5 步走：
+当前 TriMMC → 生产级，按 5 步走：
   State 改造 → 错误恢复 → 流式执行 → 自动压缩 → Token budget
 ```
 
@@ -486,13 +486,13 @@ Agent Loop 核心骨架：
 
 | 依据 | 路径 |
 |------|------|
-| 蓝本（吸收分析） | `TriMC/docs/engineering/claude-code-absorption/phase-1-core-loop.md` |
-| 当前实现 | `TriMC/src/agent-loop/loop.ts`（181 行） |
-| 吸收目标 | `TriMC/vendor/claude-code/src/query.ts`（1730 行） |
-| 代码状态 | `TriMC/docs/registry/code-state.md` |
-| 模块规则 | `TriMC/AGENTS.md` |
-| Phase 1 执行记录 | `TriMC/docs/engineering/phase-1-execution-note.md` |
-| 配套组件 | `TriMC/vendor/claude-code/src/query/tokenBudget.ts`、`stopHooks.ts`、`config.ts`、`deps.ts` |
+| 蓝本（吸收分析） | `TriMMC/docs/engineering/claude-code-absorption/phase-1-core-loop.md` |
+| 当前实现 | `TriMMC/src/agent-loop/loop.ts`（181 行） |
+| 吸收目标 | `TriMMC/vendor/claude-code/src/query.ts`（1730 行） |
+| 代码状态 | `TriMMC/docs/registry/code-state.md` |
+| 模块规则 | `TriMMC/AGENTS.md` |
+| Phase 1 执行记录 | `TriMMC/docs/engineering/phase-1-execution-note.md` |
+| 配套组件 | `TriMMC/vendor/claude-code/src/query/tokenBudget.ts`、`stopHooks.ts`、`config.ts`、`deps.ts` |
 
 ## 版本跟踪
 

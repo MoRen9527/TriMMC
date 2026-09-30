@@ -1,4 +1,4 @@
-// ── TriMC MirrorStore ──
+// ── TriMMC MirrorStore ──
 // S7: In-memory task mirror storage with CRUD + markUnknown.
 // MVP uses Map<string, MirrorTask> — post-MVP migrates to SQLite/PG.
 // CPO Q6c + CTO §7.2 S7 §2.3.
@@ -35,7 +35,7 @@ export class MirrorStore {
 
   /**
    * 登记节点心跳（heartbeat 端点调用）。
-   * 节点此前 unknown 且连续 2 次心跳 → 回归 known（契约 3.3，与 TriLC recoverThreshold=2 对称）。
+   * 节点此前 unknown 且连续 2 次心跳 → 回归 known（契约 3.3，与 TriRLC recoverThreshold=2 对称）。
    * @param now 时钟注入（测试用，默认 Date.now()）
    */
   recordNodeHeartbeat(nodeId: string, state: string, now = Date.now()): void {
@@ -72,7 +72,7 @@ export class MirrorStore {
   /**
    * 扫描心跳表，超阈值节点 → markNodeUnknown。
    * 双阈值（契约 3.2）：state=degraded 节点用 180s 宽松阈值（覆盖 60s 慢心跳 ×3 防误判），
-   * 其余 30s（3×interval，与 TriLC failThreshold=3 对称）。
+   * 其余 30s（3×interval，与 TriRLC failThreshold=3 对称）。
    * @returns 本次被标 unknown 的节点数
    */
   scanStaleNodes(
@@ -101,9 +101,9 @@ export class MirrorStore {
    * 规则：
    * - 新 taskId → 插入，firstSeenAt = now
    * - 已有 taskId → 只更新 status/summary/updatedAt/lastSeenAt，version+1
-   * - 不允许 status 从 terminal 回退到非 terminal（CPO 6c: TriLC 是权威方，
-   *   但 TriMC 做基本防御：如果现有状态是 success/failed/cancelled 且新状态
-   *   是 running，记录 warning 但仍接受——因为可能是 TriLC 恢复后的全量推送）
+   * - 不允许 status 从 terminal 回退到非 terminal（CPO 6c: TriRLC 是权威方，
+   *   但 TriMMC 做基本防御：如果现有状态是 success/failed/cancelled 且新状态
+   *   是 running，记录 warning 但仍接受——因为可能是 TriRLC 恢复后的全量推送）
    */
   mirror(nodeId: string, tasks: MirrorRequest['tasks']): number {
     const now = new Date().toISOString();
@@ -137,7 +137,7 @@ export class MirrorStore {
         // 已有任务：增量更新
         // terminal defense: 如果现有状态是 terminal 且新状态是 running，接受但记录
         if (TERMINAL_STATUSES.has(existing.status) && t.status === 'running') {
-          // TriLC 恢复后的全量推送 — 接受但记录 warning
+          // TriRLC 恢复后的全量推送 — 接受但记录 warning
           console.warn(
             `[trimc:mirror] terminal→running accepted (recovery push): ` +
             `${nodeId}/${t.taskId} ${existing.status}→${t.status}`,

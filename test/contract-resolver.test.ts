@@ -9,7 +9,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { loadContract, resolveContracts } from '../src/contracts/resolver.js';
 import type { AgentContract } from '../src/contracts/agent-contract.js';
 
-// Paths relative to TriMC repo root (v3 真源 = source-agents)
+// Paths relative to TriMMC repo root (v3 真源 = source-agents)
 const SOURCE_AGENTS = resolve('..', 'TriCompany', 'source-agents');
 const CTO_CONTRACT_PATH = resolve(SOURCE_AGENTS, 'chief-technology-officer', 'chief-technology-officer.contract.yaml');
 

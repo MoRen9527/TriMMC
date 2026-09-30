@@ -1,4 +1,4 @@
-// ── TriMC Permission Engine Types ──
+// ── TriMMC Permission Engine Types ──
 // CTO-003 P4T1: Absorbed from Claude Code 2.1.88 vendor (types/permissions.ts).
 // Tier 1 MVP: PermissionMode (3 modes), PermissionRule (8-source priority),
 // DecisionResult (allow/deny/ask), and decision pipeline context.

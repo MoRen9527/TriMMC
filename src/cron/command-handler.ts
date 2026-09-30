@@ -25,7 +25,7 @@ export interface CommandJobPayload {
   runAs?: string;
 }
 
-/** Aligned with TriLC cron DEFAULT_JOB_TIMEOUT_MS. */
+/** Aligned with TriRLC cron DEFAULT_JOB_TIMEOUT_MS. */
 export const DEFAULT_JOB_TIMEOUT_MS = 10 * 60 * 1000;
 
 /** Error tail persisted to lastError / journal. */

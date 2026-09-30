@@ -1,5 +1,5 @@
-// ── TriMC tools ctx.cwd propagation tests (r4-1 A-TriMC) ──
-// Same REQ-014b gate as TriLC, two shapes:
+// ── TriMMC tools ctx.cwd propagation tests (r4-1 A-TriMMC) ──
+// Same REQ-014b gate as TriRLC, two shapes:
 //   1. ctx.cwd present → relative bases resolve against the agent loop cwd.
 //   2. ctx absent (legacy direct callers) → falls back to process.cwd().
 // Also pins the executeTool wrapper third-param passthrough.
@@ -32,9 +32,9 @@ after(() => {
   rmSync(testDir, { recursive: true, force: true });
 });
 
-describe('ctx.cwd propagation — TriMC built-in tools (A-TriMC)', () => {
+describe('ctx.cwd propagation — TriMMC built-in tools (A-TriMMC)', () => {
   it('glob_search: relative base resolves against ctx.cwd', async () => {
-    // TriMC glob_search matches literal segments (and ** wildcards) — use the
+    // TriMMC glob_search matches literal segments (and ** wildcards) — use the
     // literal filename so the test pins the cwd resolution, not wildcard
     // semantics (which are covered by existing agent-tools tests).
     const result = JSON.parse(await executeTool('glob_search', { pattern: 'a.ts' }, { cwd: dirA }));
@@ -67,7 +67,7 @@ describe('ctx.cwd propagation — TriMC built-in tools (A-TriMC)', () => {
   });
 });
 
-describe('ctx absent — legacy fallback to process.cwd() (A-TriMC)', () => {
+describe('ctx absent — legacy fallback to process.cwd() (A-TriMMC)', () => {
   it('glob_search without ctx defaults to process.cwd()', async () => {
     const result = JSON.parse(await executeTool('glob_search', { pattern: '*.ts' }));
     assert.equal(result.base.toLowerCase(), process.cwd().toLowerCase());

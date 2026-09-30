@@ -4,15 +4,15 @@
 **Date**: 2026-07-17
 **Status**: Complete
 **Source**: Claude Code 2.1.88 vendor (`vendor/claude-code/src/query.ts`, 1730 lines)
-**Target**: TriMC agent loop (`src/agent-loop/loop.ts`, 181 lines)
+**Target**: TriMMC agent loop (`src/agent-loop/loop.ts`, 181 lines)
 
 ---
 
 ## 1. Executive Summary
 
-Claude Code's `queryLoop()` is a 1730-line while-true generator — far richer than TriMC's current 181-line agent loop. This analysis decomposes the Claude Code loop into its subsystems, terminal/continue decision tree, and error recovery cascade, then maps the gaps to TriMC's current implementation with prioritized absorption recommendations.
+Claude Code's `queryLoop()` is a 1730-line while-true generator — far richer than TriMMC's current 181-line agent loop. This analysis decomposes the Claude Code loop into its subsystems, terminal/continue decision tree, and error recovery cascade, then maps the gaps to TriMMC's current implementation with prioritized absorption recommendations.
 
-**Key finding**: TriMC currently implements ~15% of the Claude Code loop complexity. The missing 85% breaks into three tiers: (Tier 1) streaming execution + error recovery, (Tier 2) compaction + token management, (Tier 3) stop hooks + budget tracker + attachment pipeline.
+**Key finding**: TriMMC currently implements ~15% of the Claude Code loop complexity. The missing 85% breaks into three tiers: (Tier 1) streaming execution + error recovery, (Tier 2) compaction + token management, (Tier 3) stop hooks + budget tracker + attachment pipeline.
 
 ---
 
@@ -51,7 +51,7 @@ state = {
 }
 ```
 
-This pattern prevents state drift across 11 continue sites and simplifies reasoning about loop invariants. Contrast with TriMC's in-place `state.messages.push(...)` — a bug waiting to happen once more continue sites are added.
+This pattern prevents state drift across 11 continue sites and simplifies reasoning about loop invariants. Contrast with TriMMC's in-place `state.messages.push(...)` — a bug waiting to happen once more continue sites are added.
 
 ---
 
@@ -199,25 +199,25 @@ Model Failure:
 
 ---
 
-## 7. Gap Analysis: TriMC loop.ts vs Claude Code queryLoop
+## 7. Gap Analysis: TriMMC loop.ts vs Claude Code queryLoop
 
 ### 7.1 Present (✅)
 
-| Capability | TriMC | Claude Code | Notes |
+| Capability | TriMMC | Claude Code | Notes |
 |-----------|-------|-------------|-------|
 | While-true loop | ✅ | ✅ | Same fundamental pattern |
-| AsyncGenerator yield | ✅ | ✅ | TriMC yields AgentEvent, CC yields StreamEvent |
-| Max turns guard | ✅ | ✅ | TriMC: 25, CC: configurable via params |
-| Tool dispatch | ✅ | ✅ | TriMC: sequential for-of, CC: streaming executor or batch |
+| AsyncGenerator yield | ✅ | ✅ | TriMMC yields AgentEvent, CC yields StreamEvent |
+| Max turns guard | ✅ | ✅ | TriMMC: 25, CC: configurable via params |
+| Tool dispatch | ✅ | ✅ | TriMMC: sequential for-of, CC: streaming executor or batch |
 | Tool result → history append | ✅ | ✅ | Same pattern |
-| State management | ⚠️ Partial | ✅ | TriMC mutates in-place, CC uses spread-replace |
+| State management | ⚠️ Partial | ✅ | TriMMC mutates in-place, CC uses spread-replace |
 | Model call abstraction | ✅ (TriModel) | ✅ (Anthropic SDK via deps) | Provider-agnostic at loop level |
 
 ### 7.2 Missing — Tier 1: Streaming + Error Recovery (High Priority)
 
 | Capability | Gap | Impact |
 |-----------|-----|--------|
-| **Streaming tool executor** | TriMC executes tools after full response; CC executes tools during streaming | Reduces latency on multi-tool turns |
+| **Streaming tool executor** | TriMMC executes tools after full response; CC executes tools during streaming | Reduces latency on multi-tool turns |
 | **Streaming fallback** | No mechanism to handle partial stream failure | Lost response on stream interruption |
 | **Fallback model** | No model fallback on error | Loop terminates on model failure |
 | **Error recovery cascade** | No self-healing for prompt-too-long, max-tokens, or model errors | Loop is brittle — any model error kills it |
@@ -273,7 +273,7 @@ Tier 3 (later, lower urgency):
 
 ---
 
-## 9. Recommended TriMC Implementation Order
+## 9. Recommended TriMMC Implementation Order
 
 ### Step 1: State Management Fix (立即)
 
@@ -312,25 +312,25 @@ Simple counter: 90% of budget → inject nudge message. Three consecutive dimini
 
 ## 10. Design Decisions Recorded
 
-1. **Spread-replace state IS the correct pattern** for loops with multiple continue sites. In-place mutation is acceptable only when there is exactly one continue site (TriMC's current loop has exactly one, but this won't hold).
+1. **Spread-replace state IS the correct pattern** for loops with multiple continue sites. In-place mutation is acceptable only when there is exactly one continue site (TriMMC's current loop has exactly one, but this won't hold).
 
-2. **Streaming tool execution is NOT premature optimization.** Claude Code shows it works for 60+ tools. TriMC has 6 tools now, but sub-agent dispatch (task tool) is the highest-latency tool and benefits most from streaming overlap.
+2. **Streaming tool execution is NOT premature optimization.** Claude Code shows it works for 60+ tools. TriMMC has 6 tools now, but sub-agent dispatch (task tool) is the highest-latency tool and benefits most from streaming overlap.
 
-3. **Error recovery cascade IS the highest-leverage pattern** in the entire query.ts. Without it, any model error kills the conversation. TriMC's `catch (err) → yield error + return` is a dead-end — the recovery cascade should be the first Tier 1 item implemented.
+3. **Error recovery cascade IS the highest-leverage pattern** in the entire query.ts. Without it, any model error kills the conversation. TriMMC's `catch (err) → yield error + return` is a dead-end — the recovery cascade should be the first Tier 1 item implemented.
 
-4. **Dependency injection (QueryDeps) is nice-to-have, not must-have** for TriMC's current scale. TriModel's provider system already provides the key abstraction. Track for future when test mockability becomes a bottleneck.
+4. **Dependency injection (QueryDeps) is nice-to-have, not must-have** for TriMMC's current scale. TriModel's provider system already provides the key abstraction. Track for future when test mockability becomes a bottleneck.
 
-5. **TriMC does NOT need all 11 terminal reasons or 11 transition reasons.** Start with 4 terminal (`completed`, `max_turns`, `model_error`, `aborted`) and add more as compaction/token-budget/hooks come online.
+5. **TriMMC does NOT need all 11 terminal reasons or 11 transition reasons.** Start with 4 terminal (`completed`, `max_turns`, `model_error`, `aborted`) and add more as compaction/token-budget/hooks come online.
 
 ---
 
 ## Sources
 
-- `TriMC/vendor/claude-code/src/query.ts` (full file, 1730 lines — read in 6 passes)
-- `TriMC/vendor/claude-code/src/query/config.ts` (QueryConfig pattern)
-- `TriMC/vendor/claude-code/src/query/deps.ts` (QueryDeps DI pattern)
-- `TriMC/vendor/claude-code/src/query/tokenBudget.ts` (BudgetTracker + checkTokenBudget)
-- `TriMC/vendor/claude-code/src/query/stopHooks.ts` (handleStopHooks)
-- `TriMC/src/agent-loop/loop.ts` (current TriMC implementation, 181 lines)
-- `TriMC/docs/engineering/phase-1-execution-note.md` (Phase 1 & 2 completion record)
-- `TriMC/docs/registry/code-state.md` (current code readiness)
+- `TriMMC/vendor/claude-code/src/query.ts` (full file, 1730 lines — read in 6 passes)
+- `TriMMC/vendor/claude-code/src/query/config.ts` (QueryConfig pattern)
+- `TriMMC/vendor/claude-code/src/query/deps.ts` (QueryDeps DI pattern)
+- `TriMMC/vendor/claude-code/src/query/tokenBudget.ts` (BudgetTracker + checkTokenBudget)
+- `TriMMC/vendor/claude-code/src/query/stopHooks.ts` (handleStopHooks)
+- `TriMMC/src/agent-loop/loop.ts` (current TriMMC implementation, 181 lines)
+- `TriMMC/docs/engineering/phase-1-execution-note.md` (Phase 1 & 2 completion record)
+- `TriMMC/docs/registry/code-state.md` (current code readiness)

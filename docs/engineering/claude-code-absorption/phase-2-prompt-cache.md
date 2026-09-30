@@ -4,7 +4,7 @@
 **Date**: 2026-07-18
 **Status**: Complete
 **Source**: Claude Code 2.1.88 vendor (`src/services/api/promptCacheBreakDetection.ts`, 726 lines; `src/services/api/claude.ts` cache sections; `src/services/compact/` 16 files)
-**Target**: TriMC (currently **zero caching infrastructure**)
+**Target**: TriMMC (currently **zero caching infrastructure**)
 
 ---
 
@@ -12,7 +12,7 @@
 
 Claude Code's prompt caching subsystem is a **three-layer architecture**: (1) cache_control annotation at API-call boundaries, (2) two-phase break detection (pre-call snapshot → post-call delta), (3) cache_edits deletion system for reclaiming cached context. It instruments every dimension that can invalidate the Anthropic server-side KV cache — system prompt, tools, model, betas, effort, fast mode, global cache strategy, and extra body params — and surfaces human-readable explanations when cache breaks occur.
 
-**Key finding**: TriMC currently implements **0%** of Claude Code's prompt caching infrastructure. This is the single largest **cost-per-turn gap** between the two systems: every TriMC API call re-sends the full system prompt + tool schemas without any cache reuse. For a typical session of 30+ turns, Claude Code's cache hit rate of ~85% translates to roughly **80% fewer input tokens** for system+tools — the equivalent of saving ~20K tokens per cached call.
+**Key finding**: TriMMC currently implements **0%** of Claude Code's prompt caching infrastructure. This is the single largest **cost-per-turn gap** between the two systems: every TriMMC API call re-sends the full system prompt + tool schemas without any cache reuse. For a typical session of 30+ turns, Claude Code's cache hit rate of ~85% translates to roughly **80% fewer input tokens** for system+tools — the equivalent of saving ~20K tokens per cached call.
 
 **Recommended absorption order**: Cache annotation (immediate ROI) → break detection (observability) → cache_edits (advanced optimization) → compaction integration (Phase 3 prerequisite).
 
@@ -159,13 +159,13 @@ Phase 2 (post-call): checkResponseForCacheBreak(source, cacheReadTokens, ...)
 
 ---
 
-## 3. Gap Analysis: TriMC vs Claude Code
+## 3. Gap Analysis: TriMMC vs Claude Code
 
 ### 3.1 Current State: Zero Caching
 
-TriMC has **no prompt caching infrastructure whatsoever**:
+TriMMC has **no prompt caching infrastructure whatsoever**:
 
-| Capability | Claude Code | TriMC | Gap |
+| Capability | Claude Code | TriMMC | Gap |
 |------------|-------------|-------|-----|
 | cache_control annotation | Full: TTL, scope, per-block | None | **Critical** |
 | System prompt cache blocks | `splitSysPromptPrefix` + `cacheScope` | None | **Critical** |
@@ -184,12 +184,12 @@ TriMC has **no prompt caching infrastructure whatsoever**:
 
 For a typical 30-turn session:
 - Claude Code: System prompt (~15K tokens) + tools (~5K tokens) cached after first call → ~28 turns × 20K = **560K tokens saved**
-- TriMC: Full system + tools re-sent every turn → **0 tokens saved**
+- TriMMC: Full system + tools re-sent every turn → **0 tokens saved**
 - At Anthropic cache write pricing (25% premium) and cache read pricing (10% of base): **~60% net input cost reduction** for cached turns
 
 ### 3.3 Implementation Complexity
 
-| Component | Lines (CC) | Est. TriMC Lines | Difficulty | Dependency |
+| Component | Lines (CC) | Est. TriMMC Lines | Difficulty | Dependency |
 |-----------|------------|------------------|------------|------------|
 | getCacheControl + should1hCacheTTL | ~80 | ~50 | Low | Config system |
 | buildSystemPromptBlocks | ~40 | ~60 | Low | System prompt structure |
@@ -236,7 +236,7 @@ Tier 3 (Advanced — absorb after Phase 3 compaction)
 4. **cache_reference**: Add `cache_reference: tool_use_id` to all tool_result blocks before the last cache_control marker
 
 **Simplifications vs Claude Code**:
-- Skip scope/org distinction initially (TriMC has no org concept yet)
+- Skip scope/org distinction initially (TriMMC has no org concept yet)
 - Skip 1h TTL initially (5min default is sufficient for MVP sessions)
 - Skip Mycro-specific single-marker optimization (not applicable to non-Mycro backends)
 - Skip fire-and-forget fork handling (no forked agents yet)
@@ -256,7 +256,7 @@ Tier 3 (Advanced — absorb after Phase 3 compaction)
 **Simplifications vs Claude Code**:
 - Skip per-tool hashes initially (aggregate tool hash is sufficient)
 - Skip GrowthBook integration (TTL is fixed at 5min)
-- Skip betas, effort, extraBody tracking (add as TriMC gains those features)
+- Skip betas, effort, extraBody tracking (add as TriMMC gains those features)
 - Skip diff file writing initially (console log is sufficient)
 - Use 10-source LRU cap (same as Claude Code)
 
@@ -281,13 +281,13 @@ Tier 3 (Advanced — absorb after Phase 3 compaction)
 
 | Claude Code Feature | Reason to Skip |
 |---------------------|----------------|
-| `Bun.hash()` / Bun-specific fallback | TriMC uses Node.js; use `crypto.createHash` |
-| GrowthBook feature flag gating | TriMC doesn't use GrowthBook; use env vars or config |
+| `Bun.hash()` / Bun-specific fallback | TriMMC uses Node.js; use `crypto.createHash` |
+| GrowthBook feature flag gating | TriMMC doesn't use GrowthBook; use env vars or config |
 | Mycro-specific single-marker optimization | Non-Mycro backend doesn't need this |
-| `autoModeActive` / `overage` / `cachedMCEnabled` tracking | Claude Code-specific features; add when TriMC has equivalents |
-| `AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS` type branding | Claude Code's analytics privacy type; TriMC can use plain strings |
-| Agent/sub-agent tracking key isolation | No sub-agents in TriMC yet; add when Phase 3 (sub-agent tree) is absorbed |
-| Fire-and-forget fork handling | No forked queries in TriMC yet |
+| `autoModeActive` / `overage` / `cachedMCEnabled` tracking | Claude Code-specific features; add when TriMMC has equivalents |
+| `AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS` type branding | Claude Code's analytics privacy type; TriMMC can use plain strings |
+| Agent/sub-agent tracking key isolation | No sub-agents in TriMMC yet; add when Phase 3 (sub-agent tree) is absorbed |
+| Fire-and-forget fork handling | No forked queries in TriMMC yet |
 
 ---
 
@@ -380,13 +380,13 @@ File: src/services/cache-edits.ts (~300 lines)
 
 ## 8. Key Design Decisions
 
-1. **Start with 5min TTL only**: 1h requires user eligibility logic (ant/subscriber detection) that TriMC doesn't have yet. 5min covers the common case of rapid turns within a session.
+1. **Start with 5min TTL only**: 1h requires user eligibility logic (ant/subscriber detection) that TriMMC doesn't have yet. 5min covers the common case of rapid turns within a session.
 
-2. **Skip scope/org caching**: TriMC has no org/multi-user concept. All cache is per-user (no scope annotation needed).
+2. **Skip scope/org caching**: TriMMC has no org/multi-user concept. All cache is per-user (no scope annotation needed).
 
 3. **Aggregate tool hash before per-tool**: Tracking which specific tool changed is useful but adds complexity. Start with aggregate and add per-tool when debugging tool-change-induced breaks.
 
-4. **Console log before analytics**: Claude Code fires `tengu_prompt_cache_break` to BQ. TriMC should start with structured console logging and add analytics sink later.
+4. **Console log before analytics**: Claude Code fires `tengu_prompt_cache_break` to BQ. TriMMC should start with structured console logging and add analytics sink later.
 
 5. **cache_edits deferred to post-Phase 3**: Deleting cached content requires knowing what to compact, which requires the compaction subsystem (Phase 3). The cache annotation + break detection layers are independently valuable.
 

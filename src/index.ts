@@ -1,9 +1,9 @@
-import { createTriMCApp } from './server/app.js';
+import { createTriMMCApp } from './server/app.js';
 import { readEnv } from './config/env.js';
 
 async function main(): Promise<void> {
   const env = readEnv();
-  const app = createTriMCApp(env);
+  const app = createTriMMCApp(env);
   await app.start();
 }
 

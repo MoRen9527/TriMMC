@@ -1,4 +1,4 @@
-// ── TriMC Memory Injector ──
+// ── TriMMC Memory Injector ──
 // CTO-006: Converts four-layer memory (soul/memory/colleagues/social)
 // into memdir/ markdown files for Context Builder pipeline integration.
 // Pattern absorbed from Claude Code memdir/ (memoryTypes.ts, memoryScan.ts).

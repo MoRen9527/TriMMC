@@ -1,4 +1,4 @@
-# TriMC Phase 1 & 2 CTO Execution Note
+# TriMMC Phase 1 & 2 CTO Execution Note
 
 **Author**: CTO 小狄
 **Date**: 2026-07-13 (Phase 1) / 2026-07-14 (Phase 2)
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-Phase 1 delivered TriMC's own while-true agent loop, absorbed from Claude Code 2.1.88 vendor pattern, using TriModel/DeepSeek as the model provider with tool-calling support. Six built-in tools registered. Agent endpoint wired into TriMC server. Zero Anthropic SDK dependencies across both TriMC and TriModel codebases.
+Phase 1 delivered TriMMC's own while-true agent loop, absorbed from Claude Code 2.1.88 vendor pattern, using TriModel/DeepSeek as the model provider with tool-calling support. Six built-in tools registered. Agent endpoint wired into TriMMC server. Zero Anthropic SDK dependencies across both TriMMC and TriModel codebases.
 
 ---
 
@@ -50,17 +50,17 @@ Phase 1 delivered TriMC's own while-true agent loop, absorbed from Claude Code 2
 | Gate | Result |
 |------|--------|
 | TriModel build (`tsc -p tsconfig.json`) | ✅ Pass |
-| TriMC build (`tsc -p tsconfig.json`) | ✅ Pass |
-| TriMC tests (10 suites, 34 tests) | ✅ All pass |
+| TriMMC build (`tsc -p tsconfig.json`) | ✅ Pass |
+| TriMMC tests (10 suites, 34 tests) | ✅ All pass |
 | Agent tools tests (11 tests) | ✅ All pass |
-| De-anthropic audit — TriMC | ✅ Zero references found |
+| De-anthropic audit — TriMMC | ✅ Zero references found |
 | De-anthropic audit — TriModel | ✅ Protocol format refs only (TriStaciss compat), no SDK |
 
 ---
 
 ## Architecture Decisions
 
-1. **No Anthropic SDK**: TriMC uses TriModel (DeepSeek provider), not Anthropic. The Claude Code 2.1.88 vendor absorption is pattern-level only (while-true loop, tool dispatching), not SDK-level.
+1. **No Anthropic SDK**: TriMMC uses TriModel (DeepSeek provider), not Anthropic. The Claude Code 2.1.88 vendor absorption is pattern-level only (while-true loop, tool dispatching), not SDK-level.
 2. **OpenAI function-calling format**: Tools use Anthropic-compatible `ToolDefinition` schema at the API layer; TriModel's DeepSeek provider translates to OpenAI function-calling format internally.
 3. **Non-streaming Phase 1**: Agent endpoint returns JSON array, not SSE. Streaming planned for later phase.
 
@@ -103,7 +103,7 @@ Per CPO (小乔) review:
 ### P2-1: SSE Streaming (`GET /internal/v1/agent/stream`)
 - SSE event stream on agent endpoint using `asyncGeneratorToSSE()` adapter
 - Generates `data:` frames with `event:` annotations (agent, tool, loop, chat, and error events)
-- Includes `X-TriMC-Stream-Version: 1` header in responses
+- Includes `X-TriMMC-Stream-Version: 1` header in responses
 - Resolves system prompt injection through `systemPrompt?.trim()` check
 - 3 tests passing via HTTP fetch with AbortController cleanup
 
@@ -146,7 +146,7 @@ Per CPO (小乔) review:
   - `user-invocable: true`
 
 ### Server Lifecycle Fixes
-- `createTriMCApp()` now returns `{ start, stop, port }` with clean server lifecycle
+- `createTriMMCApp()` now returns `{ start, stop, port }` with clean server lifecycle
 - Tests use `port: 0` (OS-assigned) + `app.port` getter + `await app.stop()` in async `after()` hooks
 - `--test-concurrency=1` serializes test files to prevent port conflicts
 - All 55 tests pass consistently
@@ -155,7 +155,7 @@ Per CPO (小乔) review:
 
 | Gate | Result |
 |------|--------|
-| TriMC tests (12 suites, 55 tests) | ✅ 55/55 pass, 0 fail |
+| TriMMC tests (12 suites, 55 tests) | ✅ 55/55 pass, 0 fail |
 | SSE streaming | ✅ 3 tests |
 | Agent loop + tools | ✅ 11 tests |
 | Shell exec policy | ✅ 13 tests |
@@ -178,9 +178,9 @@ Per CPO (小乔) review:
 
 ## Sources
 
-- `D:\OneDrive\Code\ai\TriMC\src\agent-loop\loop.ts`
-- `D:\OneDrive\Code\ai\TriMC\src\agent-loop\tools.ts`
-- `D:\OneDrive\Code\ai\TriMC\src\server\app.ts`
+- `D:\OneDrive\Code\ai\TriMMC\src\agent-loop\loop.ts`
+- `D:\OneDrive\Code\ai\TriMMC\src\agent-loop\tools.ts`
+- `D:\OneDrive\Code\ai\TriMMC\src\server\app.ts`
 - `D:\OneDrive\Code\ai\TriModel\src\types.ts`
 - `D:\OneDrive\Code\ai\TriModel\src\providers\deepseek.ts`
 - CPO+CTO Joint Review, 2026-07-13

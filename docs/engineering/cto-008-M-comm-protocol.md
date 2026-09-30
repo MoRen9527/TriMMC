@@ -1,4 +1,4 @@
-# CTO-008-M: TriMC ↔ TriLC 通信协议设计
+# CTO-008-M: TriMMC ↔ TriRLC 通信协议设计
 
 | 属性       | 值                                                                               |
 | ---------- | -------------------------------------------------------------------------------- |
@@ -10,19 +10,19 @@
 
 ## 1. 协议目标
 
-本协议定义 **TriMC（中央调度）** 与 **TriLC（本地执行）** 之间的通信规约，支持三种运行模式的无缝切换：
+本协议定义 **TriMMC（中央调度）** 与 **TriRLC（本地执行）** 之间的通信规约，支持三种运行模式的无缝切换：
 
 | 模式                    | 适用场景                         | 核心行为                                          |
 | ----------------------- | -------------------------------- | ------------------------------------------------- |
-| **在线 ACN 代理**       | TriMC 可达时                     | TriLC 透明代理请求到 TriMC，零本地智能            |
-| **离线 localbus 升主**  | TriMC 不可达时                   | TriLC 降级为本机 Agent 引擎，独立执行              |
-| **恢复 merge/冲突仲裁** | 离线→在线切换时                  | 将离线期间产生的事件/结果回放给 TriMC，冲突时仲裁  |
+| **在线 ACN 代理**       | TriMMC 可达时                     | TriRLC 透明代理请求到 TriMMC，零本地智能            |
+| **离线 localbus 升主**  | TriMMC 不可达时                   | TriRLC 降级为本机 Agent 引擎，独立执行              |
+| **恢复 merge/冲突仲裁** | 离线→在线切换时                  | 将离线期间产生的事件/结果回放给 TriMMC，冲突时仲裁  |
 
 ---
 
 ## 2. 现状基线（已实现）
 
-### 2.1 TriMC 侧 (`TriMC/src/server/app.ts`)
+### 2.1 TriMMC 侧 (`TriMMC/src/server/app.ts`)
 
 - **`GET /healthz`** — 返回 `{ ok: true, service: "trimc" }`
 - **`GET /hello`** — 模型可用性探测，返回模型 greeting
@@ -43,11 +43,11 @@
   - 支持 pipeline 组装（Soul Loader → Memory Injector → Context Builder → Tool Gater）当 `contract` 存在时
   - 兼容 legacy raw 模式（无 contract 时直接 agentLoop）
 
-### 2.2 TriLC 侧 (`TriLC/src/server/app.ts`)
+### 2.2 TriRLC 侧 (`TriRLC/src/server/app.ts`)
 
 - **`GET /healthz`** — 返回 `{ ok: true, service: "trilc", trimc: "connected"|"degraded" }`
-- **`POST /internal/v1/agent`** — 与 TriMC 同签名的代理入口：
-  - **connected 状态**：透明 proxy 到 TriMC，pipe 响应流
+- **`POST /internal/v1/agent`** — 与 TriMMC 同签名的代理入口：
+  - **connected 状态**：透明 proxy 到 TriMMC，pipe 响应流
   - **degraded 状态**：本地 agentLoop 直接执行，SSE/JSON 双模式
 - `ConnectionManager` 已实现三态切换（`connected` → `degraded` ↔ `local`），配置：
   - `failThreshold = 3`（连续 3 次失败 → degraded）
@@ -64,23 +64,23 @@
 
 #### 3.1.1 请求头注入
 
-TriLC 代理到 TriMC 时，注入 TriLC 侧元数据：
+TriRLC 代理到 TriMMC 时，注入 TriRLC 侧元数据：
 
 ```http
 POST /internal/v1/agent?stream=true HTTP/1.1
-X-TriLC-Node-ID: {hostname}-{pid}
-X-TriLC-Version: 1.0.0
-X-TriLC-Connection-ID: {uuid}
+X-TriRLC-Node-ID: {hostname}-{pid}
+X-TriRLC-Version: 1.0.0
+X-TriRLC-Connection-ID: {uuid}
 Content-Type: application/json
 ```
 
-- `X-TriLC-Node-ID`：唯一标识本地节点（TriMC 据此追踪多台 TriLC）
-- `X-TriLC-Connection-ID`：本次连接会话 ID，用于恢复时回放
-- `X-TriLC-Version`：协议版本，TriMC 据此判断兼容性
+- `X-TriRLC-Node-ID`：唯一标识本地节点（TriMMC 据此追踪多台 TriRLC）
+- `X-TriRLC-Connection-ID`：本次连接会话 ID，用于恢复时回放
+- `X-TriRLC-Version`：协议版本，TriMMC 据此判断兼容性
 
 #### 3.1.2 Agent 响应元数据
 
-TriMC 在非流式 JSON 响应中附加元数据：
+TriMMC 在非流式 JSON 响应中附加元数据：
 
 ```json
 {
@@ -92,8 +92,8 @@ TriMC 在非流式 JSON 响应中附加元数据：
 }
 ```
 
-- `sessionId`：TriMC 侧分配的全局唯一会话 ID
-- `nodeId`：回射 TriLC 发送的 Node-ID
+- `sessionId`：TriMMC 侧分配的全局唯一会话 ID
+- `nodeId`：回射 TriRLC 发送的 Node-ID
 
 ---
 
@@ -101,18 +101,18 @@ TriMC 在非流式 JSON 响应中附加元数据：
 
 #### 3.2.1 架构
 
-当 TriLC 进入 `degraded` 状态后：
+当 TriRLC 进入 `degraded` 状态后：
 
 ```
                     ┌─────────────┐
   本地 AgentLoop ──►│  Event Queue │──► 持久化到本地 SQLite
                     └─────────────┘
                           │
-              (TriMC 恢复后) replay
+              (TriMMC 恢复后) replay
                           │
                           ▼
                     ┌─────────────┐
-                    │   TriMC     │
+                    │   TriMMC     │
                     │  /internal/ │
                     │  v1/events/ │
                     │  replay     │
@@ -121,7 +121,7 @@ TriMC 在非流式 JSON 响应中附加元数据：
 
 #### 3.2.2 事件队列数据模型
 
-每个事件携带足够的上下文以便 TriMC 侧重放：
+每个事件携带足够的上下文以便 TriMMC 侧重放：
 
 ```typescript
 interface QueuedEvent {
@@ -175,7 +175,7 @@ CREATE INDEX idx_queue_conn ON event_queue(connection_id, seq_no);
 2. 开始事件队列回放
 3. 回放完成后恢复透明代理模式
 
-#### 3.3.2 TriMC 侧新增端点
+#### 3.3.2 TriMMC 侧新增端点
 
 ```http
 POST /internal/v1/events/replay
@@ -204,14 +204,14 @@ Content-Type: application/json
 
 #### 3.3.3 冲突仲裁策略
 
-当 TriMC 发现离线期间有冲突时（如同一 taskId 同时被 TriMC 分配给了其他在线 TriLC 节点）：
+当 TriMMC 发现离线期间有冲突时（如同一 taskId 同时被 TriMMC 分配给了其他在线 TriRLC 节点）：
 
 | 冲突类型               | 仲裁策略                             | 触发条件                                         |
 | ---------------------- | ------------------------------------ | ------------------------------------------------ |
-| **任务双重分配**       | TriMC 侧 winner-takes-last           | 同一 taskId 在离线期间被分配给了其他在线节点      |
-| **状态版本落后**       | TriMC 侧 apply-offline-changes       | 离线节点的状态版本号 < TriMC 当前版本号           |
-| **工具调用幂等冲突**   | TriMC 侧标记为 `already_executed`    | 同一幂等键的工具调用已由其他节点执行              |
-| **无冲突**             | TriMC 侧直接合并                     | 离线期间无其他节点操作同一资源                    |
+| **任务双重分配**       | TriMMC 侧 winner-takes-last           | 同一 taskId 在离线期间被分配给了其他在线节点      |
+| **状态版本落后**       | TriMMC 侧 apply-offline-changes       | 离线节点的状态版本号 < TriMMC 当前版本号           |
+| **工具调用幂等冲突**   | TriMMC 侧标记为 `already_executed`    | 同一幂等键的工具调用已由其他节点执行              |
+| **无冲突**             | TriMMC 侧直接合并                     | 离线期间无其他节点操作同一资源                    |
 
 **冲突响应格式**：
 
@@ -244,18 +244,18 @@ Content-Type: application/json
 
 #### 3.4.1 设计动机
 
-当前 TriLC ↔ TriMC 仅通过 HTTP 通信；在离线模式下需要一种**进程内+本机 IPC**机制来：
+当前 TriRLC ↔ TriMMC 仅通过 HTTP 通信；在离线模式下需要一种**进程内+本机 IPC**机制来：
 
 - 发布/订阅本地状态变更（`task:started`、`task:succeeded`、`task:failed`）
 - 本地模块间解耦（planner ↔ daemon ↔ local-node）
-- 待恢复后批量上传状态变更到 TriMC
+- 待恢复后批量上传状态变更到 TriMMC
 
 #### 3.4.2 实现方案
 
 **Phase 1（当前阶段）**：`EventEmitter` 内存总线
 
 ```typescript
-// TriLC/src/localbus/bus.ts
+// TriRLC/src/localbus/bus.ts
 import { EventEmitter } from "node:events";
 
 export type LocalBusEvent =
@@ -275,14 +275,14 @@ export const localBus = new EventEmitter<{ event: [LocalBusEvent] }>();
 - 优势：零依赖，性能高，毫秒级订阅/发布
 - 局限：进程内通信，不跨进程（当前阶段足够）
 
-**Phase 2（TriMC 正式宿主后）**：升级为 Unix Domain Socket / Named Pipe：
+**Phase 2（TriMMC 正式宿主后）**：升级为 Unix Domain Socket / Named Pipe：
 
 ```
-TriLC (app process) ──UDS──► TriLC (localbus daemon) ──HTTP──► TriMC
+TriRLC (app process) ──UDS──► TriRLC (localbus daemon) ──HTTP──► TriMMC
 ```
 
-- 支持多个 TriLC 子进程共享同一 localbus
-- 与 TriMC 侧的 `TRISTACISS_BASE_URL` 和 `OPENCLOW_GATEWAY_URL` 对齐
+- 支持多个 TriRLC 子进程共享同一 localbus
+- 与 TriMMC 侧的 `TRISTACISS_BASE_URL` 和 `OPENCLOW_GATEWAY_URL` 对齐
 
 ---
 
@@ -290,7 +290,7 @@ TriLC (app process) ──UDS──► TriLC (localbus daemon) ──HTTP──�
 
 #### 3.5.1 当前心跳
 
-- TriLC `ConnectionManager.checkHealth()`：GET TriMC `/healthz`，每 10s
+- TriRLC `ConnectionManager.checkHealth()`：GET TriMMC `/healthz`，每 10s
 - 仅检查可达性，不携带任何元数据
 
 #### 3.5.2 增强心跳
@@ -308,7 +308,7 @@ Content-Type: application/json
 }
 ```
 
-TriMC 响应：
+TriMMC 响应：
 
 ```json
 {
@@ -319,7 +319,7 @@ TriMC 响应：
 }
 ```
 
-- `commands`：TriMC 可下发的指令队列（如 `replay_now`、`switch_connection`、`shutdown`、`drain_queue`）
+- `commands`：TriMMC 可下发的指令队列（如 `replay_now`、`switch_connection`、`shutdown`、`drain_queue`）
 - 心跳间隔：`10s`（活跃时）、`30s`（空闲时，通过 `heartbeat_ack` 动态协商）
 
 ---
@@ -329,12 +329,12 @@ TriMC 响应：
 | 端点                              | 方法  | 提供方  | 用途                       | 状态       |
 | --------------------------------- | ----- | ------- | -------------------------- | ---------- |
 | `/healthz`                        | GET   | 双方    | 健康检查                   | ✅ 已实现  |
-| `/internal/v1/agent`              | POST  | TriMC   | Agent 执行（pipeline 模式）| ✅ 已实现  |
-| `/internal/v1/agent`              | POST  | TriLC   | Agent 代理/本地回退        | ✅ 已实现  |
-| `/internal/v1/chat`               | POST  | TriMC   | 单轮对话                   | ✅ 已实现  |
-| `/internal/v1/tasks`              | POST  | TriMC   | 任务提交                   | ✅ 骨架    |
-| `/internal/v1/heartbeat`          | POST  | TriMC   | 增强心跳                   | 📋 已设计 |
-| `/internal/v1/events/replay`      | POST  | TriMC   | 离线事件回放               | 📋 已设计 |
+| `/internal/v1/agent`              | POST  | TriMMC   | Agent 执行（pipeline 模式）| ✅ 已实现  |
+| `/internal/v1/agent`              | POST  | TriRLC   | Agent 代理/本地回退        | ✅ 已实现  |
+| `/internal/v1/chat`               | POST  | TriMMC   | 单轮对话                   | ✅ 已实现  |
+| `/internal/v1/tasks`              | POST  | TriMMC   | 任务提交                   | ✅ 骨架    |
+| `/internal/v1/heartbeat`          | POST  | TriMMC   | 增强心跳                   | 📋 已设计 |
+| `/internal/v1/events/replay`      | POST  | TriMMC   | 离线事件回放               | 📋 已设计 |
 
 ---
 
@@ -348,7 +348,7 @@ TriMC 响应：
 | M.2  | 恢复 replay 端点 (`/internal/v1/events/replay`)| 1.5h   | 小全       |
 | M.3  | localbus 内存总线 (`localbus/bus.ts`)          | 1h     | 小全       |
 | M.4  | 增强心跳 (`/internal/v1/heartbeat` + commands) | 1.5h   | 小全       |
-| M.5  | 冲突仲裁逻辑 (TriMC 侧)                        | 2h     | 小柯       |
+| M.5  | 冲突仲裁逻辑 (TriMMC 侧)                        | 2h     | 小柯       |
 | M.6  | 集成测试（在线→离线→恢复全流程）               | 2h     | 小柯       |
 | M.7  | 代码审查 + code-state.md 更新                  | 1h     | 小狄       |
 
@@ -374,8 +374,8 @@ M.1 (事件队列) ──┬──► M.2 (replay 端点) ──► M.5 (冲突�
 
 ## 6. 兼容性说明
 
-- **TriLC 单机模式**：即使 TriMC 永不可达，TriLC 仍可通过 `agentLoop` 本地执行——不依赖协议实现
-- **新旧协议共存**：TriLC 注入的 `X-TriLC-Version` 头允许 TriMC 降级响应
+- **TriRLC 单机模式**：即使 TriMMC 永不可达，TriRLC 仍可通过 `agentLoop` 本地执行——不依赖协议实现
+- **新旧协议共存**：TriRLC 注入的 `X-TriRLC-Version` 头允许 TriMMC 降级响应
 - **队列格式版本**：`event_queue` 表预留 `schema_version` 列用于未来迁移
 - **向后兼容**：所有新增端点为附加，不修改现有 `/healthz` 和 `/internal/v1/agent` 行为
 
@@ -388,7 +388,7 @@ M.1 (事件队列) ──┬──► M.2 (replay 端点) ──► M.5 (冲突�
 | 离线事件队列膨胀             | 中   | 低   | TTL 1h + 硬上限 10k 事件 → 触发告警             |
 | 冲突仲裁逻辑复杂度过高       | 低   | 中   | 先实现最简单的 winnner-takes-last，后续迭代     |
 | SQLite 写入阻塞主循环        | 低   | 中   | 异步 WAL 模式 + batch insert                    |
-| 恢复 replay 期间 TriMC 再次断连 | 中   | 中   | 断点续传：replay 返回 `lastSeqNo`，续传未完成的  |
+| 恢复 replay 期间 TriMMC 再次断连 | 中   | 中   | 断点续传：replay 返回 `lastSeqNo`，续传未完成的  |
 
 ---
 

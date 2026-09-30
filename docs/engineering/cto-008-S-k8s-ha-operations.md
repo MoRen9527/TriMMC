@@ -1,9 +1,9 @@
-# CTO-008-S：TriMC K8s 高可用运维方案
+# CTO-008-S：TriMMC K8s 高可用运维方案
 
 > 设计人：ChiefTechnologyOfficer（小狄）
 > 状态：APPROVED（CTO-008-S 交付，K8s manifests 已同步更新）
 > 日期：2026-07-16
-> 上游依据：`docs/architecture-overall-unified.mmd`（TriMC K8s 三热备）、`TriMC/k8s/trimc/`（现有 K8s manifests）
+> 上游依据：`docs/architecture-overall-unified.mmd`（TriMMC K8s 三热备）、`TriMMC/k8s/trimc/`（现有 K8s manifests）
 
 ---
 
@@ -23,7 +23,7 @@
 ### 与架构图差距
 
 ```
-架构图要求：TriMC K8s 三热备
+架构图要求：TriMMC K8s 三热备
 当前现状：2 replicas，PDB 仅保证 1 个可用
 
 差距：
@@ -31,7 +31,7 @@
   2. PDB minAvailable 1→2（保证至少 2 个可用，容忍 1 个故障）
   3. 缺少 podAntiAffinity → 可能 2 个实例调度到同一节点
   4. 缺少多可用区/多集群拓扑分析
-  5. 缺少 TriLC→TriMC 客户端侧故障切换指引
+  5. 缺少 TriRLC→TriMMC 客户端侧故障切换指引
 ```
 
 ---
@@ -48,7 +48,7 @@
 │  └────────┬──────────────┬──────────────┬───────────┘   │
 │           │              │              │                │
 │  ┌────────▼──────┐ ┌────▼────────┐ ┌───▼─────────┐    │
-│  │  TriMC Pod-1  │ │ TriMC Pod-2 │ │ TriMC Pod-3 │    │
+│  │  TriMMC Pod-1  │ │ TriMMC Pod-2 │ │ TriMMC Pod-3 │    │
 │  │  Node-A       │ │ Node-B      │ │ Node-C      │    │
 │  │  (required)   │ │ (preferred) │ │ (preferred) │    │
 │  └────────┬──────┘ └────┬────────┘ └───┬─────────┘    │
@@ -68,7 +68,7 @@
 |------|------|------|
 | 副本数 | **3**（固定，不依赖 HPA 下限） | 满足"三热备"定义；2 副本只剩 1 个可用时无法区分"单点故障"还是"健康实例不足" |
 | Pod 反亲和 | **requiredDuringScheduling**（硬反亲和） | 确保 3 个副本分布在不同节点；若集群 <3 节点，调度阻塞（可降级为 preferred） |
-| Service sessionAffinity | **ClientIP** | 同一 TriLC 客户端请求路由到同一 TriMC Pod，减少跨 Pod 会话切换 |
+| Service sessionAffinity | **ClientIP** | 同一 TriRLC 客户端请求路由到同一 TriMMC Pod，减少跨 Pod 会话切换 |
 | PDB minAvailable | **2** | 允许最多 1 个 Pod 不可用期间驱逐；若设为 1 则允许 2 个 Pod 同时被驱逐 = 违反三热备语义 |
 
 ---
@@ -99,14 +99,14 @@ K8s 集群跨 3 个 AZ (us-east-1a/1b/1c)
 
 ```
 Cluster-A (us-east-1)          Cluster-B (us-west-2)
-  TriMC × 3                      TriMC × 2 (warm standby)
+  TriMMC × 3                      TriMMC × 2 (warm standby)
   PostgreSQL (primary)           PostgreSQL (read replica)
 
   需要额外投入：
   - 全局 DNS/负载均衡（Route53 + Health Check 故障转移）
-  - TriMC 无状态但 PostgreSQL 有状态 → 主从复制延迟
+  - TriMMC 无状态但 PostgreSQL 有状态 → 主从复制延迟
   - TriStaciss 模型平台也需要多集群部署或 VPN 打通
-  - TriLC 客户端需支持多 endpoint 故障切换
+  - TriRLC 客户端需支持多 endpoint 故障切换
 
   结论：Phase 1 MVP 阶段不推荐多集群。单集群 3 AZ 已满足可用性需求。
   多集群在用户量突破 10 万或合规要求（数据不出境）时再评估。
@@ -117,12 +117,12 @@ Cluster-A (us-east-1)          Cluster-B (us-west-2)
 若自建 PostgreSQL HA 负担过重：
 
 ```
-TriMC Pods × 3 (K8s, 无状态)  →  云托管 PostgreSQL (RDS/Aurora, Multi-AZ)
+TriMMC Pods × 3 (K8s, 无状态)  →  云托管 PostgreSQL (RDS/Aurora, Multi-AZ)
                                  →  TriStaciss (外部 HTTP 服务，已有冗余)
 ```
 
-TriMC 自身无状态（会话在内存/Redis），所有持久化走 PostgreSQL。将 PG 迁移到云托管后：
-- TriMC Pod 重启不影响数据
+TriMMC 自身无状态（会话在内存/Redis），所有持久化走 PostgreSQL。将 PG 迁移到云托管后：
+- TriMMC Pod 重启不影响数据
 - K8s 集群故障不影响 PG（PG 独立于 K8s 集群）
 - PG 自身的 Multi-AZ 由云厂商保证
 
@@ -169,15 +169,15 @@ spec:
 
 ---
 
-## 五、TriLC 客户端侧故障切换
+## 五、TriRLC 客户端侧故障切换
 
-TriLC `ConnectionManager`（CTO-008-P 已实现）负责检测 TriMC 可用性并自动切换：
+TriRLC `ConnectionManager`（CTO-008-P 已实现）负责检测 TriMMC 可用性并自动切换：
 
 ```
-TriLC 连接策略（当前）：
+TriRLC 连接策略（当前）：
   1. 优先连接 trimcBaseUrl（默认 http://127.0.0.1:8710）
   2. 3 次连续失败 → degraded → 使用本地 agentLoop()
-  3. 2 次连续成功 → 恢复 connected → 恢复代理到 TriMC
+  3. 2 次连续成功 → 恢复 connected → 恢复代理到 TriMMC
 
 未来增强（Phase 2）：
   - 支持 trimcEndpoints[] 多地址列表
@@ -188,12 +188,12 @@ TriLC 连接策略（当前）：
 ### K8s Service 层的故障切换
 
 ```
-TriLC → trimc.example.com (DNS 解析到 K8s Service ClusterIP 或 Ingress)
+TriRLC → trimc.example.com (DNS 解析到 K8s Service ClusterIP 或 Ingress)
       → K8s Service 自动负载均衡到健康 Pod
       → Pod 故障时 K8s 自动从 Service endpoint 摘除（readinessProbe 失败）
 ```
 
-TriLC 客户端无需感知 Pod 拓扑变化。K8s Service 的 readinessProbe 确保只路由到健康 Pod。
+TriRLC 客户端无需感知 Pod 拓扑变化。K8s Service 的 readinessProbe 确保只路由到健康 Pod。
 
 ---
 
@@ -211,7 +211,7 @@ docker-compose 中的 PostgreSQL 是单实例（无 HA）。
 | Phase B（staging） | K8s StatefulSet + persistent volume | 内部测试 |
 | Phase C（生产） | 云托管 PostgreSQL（RDS Multi-AZ）或 Patroni HA | 生产流量 |
 
-### TriMC 对 PG 故障的容忍度
+### TriMMC 对 PG 故障的容忍度
 
 - TaskController 任务持久化依赖 PG
 - 若 PG 不可用，新任务创建失败，但已有任务继续在内存中执行
@@ -246,9 +246,9 @@ curl http://localhost:8710/healthz
 - [ ] 3 个 Pod 全部 Running 且分布在不同 node
 - [ ] PDB minAvailable=2
 - [ ] 手动删除 1 个 Pod → Service 自动摘除 → 剩余 2 Pod 继续服务
-- [ ] TriLC 连接 K8s Service → 代理成功 → 灭活 2 个 Pod（只剩 1 个）→ TriLC 仍可代理
-- [ ] 灭活全部 3 个 Pod → TriLC 在 3 次失败后切换到本地模式
-- [ ] 恢复 Pod → TriLC 在 2 次成功后恢复代理模式
+- [ ] TriRLC 连接 K8s Service → 代理成功 → 灭活 2 个 Pod（只剩 1 个）→ TriRLC 仍可代理
+- [ ] 灭活全部 3 个 Pod → TriRLC 在 3 次失败后切换到本地模式
+- [ ] 恢复 Pod → TriRLC 在 2 次成功后恢复代理模式
 
 ---
 
@@ -259,7 +259,7 @@ curl http://localhost:8710/healthz
 | 集群仅 2 个 node | podAntiAffinity 硬反亲和导致第 3 个 Pod 无法调度 | 降级为 preferredDuringScheduling |
 | PostgreSQL 单点故障 | 任务持久化中断 | Phase C 迁移到云托管 PG |
 | K8s API Server 故障 | 新 Pod 无法调度，但已有 Pod 继续运行 | 已有 Pod 不受影响；控制面恢复后自动修复 |
-| 全 AZ 网络分区 | 所有 TriMC Pod 不可达 | TriLC 自动切换本地模式（CTO-008-P 已实现） |
+| 全 AZ 网络分区 | 所有 TriMMC Pod 不可达 | TriRLC 自动切换本地模式（CTO-008-P 已实现） |
 | TriStaciss 外部依赖故障 | 模型调用回退到 DeepSeek 直连 | TriModel fallback chain 已支持 |
 | 会话粘滞导致负载不均 | 某 Pod 过载 | HPA CPU 70% 触发扩容；sessionAffinity timeout 300s 后重分配 |
 
@@ -267,8 +267,8 @@ curl http://localhost:8710/healthz
 
 ## 九、使用依据
 
-- `docs/architecture-overall-unified.mmd`：TriMC K8s 三热备定义
-- `TriMC/k8s/trimc/`：现有 K8s manifests 基线（deployment/hpa/pdb/service）
-- `TriMC/docs/engineering/deployment-topology.md`：最小部署拓扑
-- `TriLC/src/server/app.ts`：ConnectionManager 故障切换实现
-- `docs/engineering/cto-008-M-tri-mc-lc-protocol.md`：TriMC↔TriLC 通信协议
+- `docs/architecture-overall-unified.mmd`：TriMMC K8s 三热备定义
+- `TriMMC/k8s/trimc/`：现有 K8s manifests 基线（deployment/hpa/pdb/service）
+- `TriMMC/docs/engineering/deployment-topology.md`：最小部署拓扑
+- `TriRLC/src/server/app.ts`：ConnectionManager 故障切换实现
+- `docs/engineering/cto-008-M-tri-mc-lc-protocol.md`：TriMMC↔TriRLC 通信协议

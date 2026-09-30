@@ -1,6 +1,6 @@
 // ── Employee Registry Unit Tests ──
 // Phase A: static contract loading, EmployeeRecord construction
-// Source: TriMC/docs/engineering/employee-orchestration-design.md §5.1
+// Source: TriMMC/docs/engineering/employee-orchestration-design.md §5.1
 
 import { describe, it, after } from 'node:test';
 import assert from 'node:assert';

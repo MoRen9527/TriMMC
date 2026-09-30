@@ -1,6 +1,6 @@
 // ── Dispatch Proxy ──
 // 6-step dispatch pipeline: classify → estimate → route → budget → schedule → dispatch
-// Source: TriMC/docs/engineering/employee-orchestration-design.md §3.5
+// Source: TriMMC/docs/engineering/employee-orchestration-design.md §3.5
 
 import { loadEmployeeRegistry } from './employee-registry.js';
 import { route } from './capability-router.js';

@@ -1,4 +1,4 @@
-// ── TriMC Pipeline Integration Tests ──
+// ── TriMMC Pipeline Integration Tests ──
 // CTO-012: Validates end-to-end assembly of all four v0.2.0 orchestration components
 // from AgentContract through to AgentLoopOptions.
 // Pattern: 小柯验证 — block-level tests for the full pipeline composition.
@@ -63,7 +63,7 @@ const CTO_CONTRACT: AgentContract = {
     outputs: [{ type: 'technical_decision', description: 'APPROVE/FREEZE/ESCALATE' }],
   },
   instructions: 'Always prefer reading before writing. Never skip validation.',
-  runtime_baseline: [{ name: 'TriMC', description: 'Agent runtime' }],
+  runtime_baseline: [{ name: 'TriMMC', description: 'Agent runtime' }],
 };
 
 const MINIMAL_CONTRACT: AgentContract = {

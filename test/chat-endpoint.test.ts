@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 const originalFetch = globalThis.fetch;
 
-describe('TriMC chat endpoint', () => {
+describe('TriMMC chat endpoint', () => {
   let port: number;
   let serverUrl: string;
   let app: { start(): Promise<void>; stop(): Promise<void>; port: number };
@@ -36,9 +36,9 @@ describe('TriMC chat endpoint', () => {
       }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     };
 
-    const { createTriMCApp } = await import('../src/server/app.js');
+    const { createTriMMCApp } = await import('../src/server/app.js');
     // Use port 0 to let the OS assign a free port
-    app = createTriMCApp({ port: 0 } as never);
+    app = createTriMMCApp({ port: 0 } as never);
     await app.start();
     port = app.port;
     serverUrl = `http://127.0.0.1:${port}`;

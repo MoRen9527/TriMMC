@@ -2,7 +2,7 @@
 
 > 状态：APPROVED（COS-005 交付，CTO 小狄，2026-07-16）
 > 吸收源：`reference/openclaw-v2026.3.28`
-> 目标模块：TriMC（后端服务层）
+> 目标模块：TriMMC（后端服务层）
 > 前置依赖：CTO-003（Claude Code 吸收 Tier 1 ✅）、CTO-008-C（共享核心 ✅）
 
 ---
@@ -13,12 +13,12 @@
 
 | 源目录 | 功能 | 吸收理由 |
 |--------|------|----------|
-| `src/cron/` | CronService — 定时任务调度引擎 | CEO 明确要求"周工作平移这类定时任务"；当前 TriMC 无任何定时调度能力 |
-| `src/cron/heartbeat-policy.ts` | 心跳投递策略（心跳 OK 摘要，跳过纯心跳投递） | 作为 TriMC 任务执行心跳的基础策略 |
+| `src/cron/` | CronService — 定时任务调度引擎 | CEO 明确要求"周工作平移这类定时任务"；当前 TriMMC 无任何定时调度能力 |
+| `src/cron/heartbeat-policy.ts` | 心跳投递策略（心跳 OK 摘要，跳过纯心跳投递） | 作为 TriMMC 任务执行心跳的基础策略 |
 | `src/cron/schedule.ts` | Cron 表达式解析 + 缓存（基于 croner） | 调度核心，不依赖 openclaw 特有 channel |
-| `src/process/supervisor/` | ProcessSupervisor — 受管子进程生命周期 | TriMC sub-agent spawning 已有 supervisor 概念，可增强 |
+| `src/process/supervisor/` | ProcessSupervisor — 受管子进程生命周期 | TriMMC sub-agent spawning 已有 supervisor 概念，可增强 |
 | `src/infra/backoff.ts` | 退避重试工具 | 通用基础设施，调度任务执行失败重试需要 |
-| `src/cron/store.ts` + `store.test.ts` | Job 持久化存储层 | 任务数据需要在 TriMC 重启后保留 |
+| `src/cron/store.ts` + `store.test.ts` | Job 持久化存储层 | 任务数据需要在 TriMMC 重启后保留 |
 | `src/cron/types.ts` | CronJob / CronJobCreate / CronSchedule 类型 | 调度系统的类型契约 |
 | `src/cron/stagger.ts` | 错峰调度工具 | 避免多个定时任务在同一时刻触发导致资源尖刺 |
 
@@ -28,7 +28,7 @@
 |--------|------|----------|
 | `src/daemon/` | 跨平台服务管理（launchd/systemd/schtasks） | 设计参考；K8s deployment 已覆盖服务生命周期，单机场景吸收 daemon 概念但不直接移植 |
 | `src/entry.respawn.ts` | 进程崩溃自动重启 | 设计参考；K8s restartPolicy + liveness probe 已覆盖 |
-| `src/process/command-queue.ts` | 通道命令队列（lane-based） | 仅参考 lane 设计模式；TriMC 已有自己的 agent-loop lane 抽象 |
+| `src/process/command-queue.ts` | 通道命令队列（lane-based） | 仅参考 lane 设计模式；TriMMC 已有自己的 agent-loop lane 抽象 |
 | `src/process/kill-tree.ts` | 进程树终止 | 参考实现；triLC local execution 需要 |
 | `src/polls.ts` | 社交投票（Telegram/Discord） | **不吸收** — 这是 social channel 功能，与定时任务无关 |
 
@@ -46,7 +46,7 @@
 
 ## 2. 现状差距分析
 
-### 2.1 TriMC 已有能力
+### 2.1 TriMMC 已有能力
 
 | 能力 | 当前实现 | 成熟度 |
 |------|----------|--------|
@@ -58,7 +58,7 @@
 | Healthz 端点 | `/healthz:8710` (K8s probes) | L3 — 生产可用 |
 | K8s 部署 | `k8s/trimc/` (5 manifests) | L3 — APPROVED |
 
-### 2.2 TriMC 缺失能力
+### 2.2 TriMMC 缺失能力
 
 | 缺失能力 | 影响 | 吸收优先级 |
 |----------|------|------------|
@@ -77,7 +77,7 @@
 
 ```
 ┌─────────────────────────────────────────────────┐
-│                    TriMC Server                   │
+│                    TriMMC Server                   │
 │  ┌───────────────┐  ┌─────────────────────────┐  │
 │  │ Agent Loop    │  │  Task Scheduler (NEW)    │  │
 │  │ (CTO-008-C)   │  │  ┌─────────────────┐    │  │
@@ -113,7 +113,7 @@
 
 ### 3.2 模块落点
 
-| 吸收模块 | TriMC 落点 | 说明 |
+| 吸收模块 | TriMMC 落点 | 说明 |
 |----------|-----------|------|
 | Cron Engine | `src/scheduler/cron-engine.ts` | 基于 croner 的表达式解析 + 下次触发时间计算 |
 | Job Store | `src/scheduler/job-store.ts` | 任务持久化（当前阶段用 JSON 文件，后续迁移 SQLite） |
@@ -135,7 +135,7 @@
 
 ### Phase 1: 调度核心（P0，预计 3-4h）
 
-**目标**：TriMC 具备定时任务调度能力，支持"周度平移"类周期性任务。
+**目标**：TriMMC 具备定时任务调度能力，支持"周度平移"类周期性任务。
 
 | 步骤 | 内容 | 吸收源文件 | 产出 |
 |------|------|-----------|------|
@@ -200,7 +200,7 @@
 | P4.3 | CLI 命令：`triMC service start/stop/status` | — | `src/cli/service.ts` |
 
 **门禁**：
-- [ ] Windows 单机 `triMC service start` 可启动 TriMC 后台进程
+- [ ] Windows 单机 `triMC service start` 可启动 TriMMC 后台进程
 - [ ] `triMC service stop` 优雅终止
 - [ ] K8s 部署不受影响
 
@@ -215,11 +215,11 @@
 | Phase 3 | 2-3h | 10h | 进程监督就绪 |
 | Phase 4 | 1-2h | 12h | 单机服务管理就绪 |
 
-**里程碑 1（P0 ready）**：Phase 1 完成 → 可创建"周度平移"cron job，TriMC 自动在每周一触发平移
+**里程碑 1（P0 ready）**：Phase 1 完成 → 可创建"周度平移"cron job，TriMMC 自动在每周一触发平移
 
 **里程碑 2（P1 ready）**：Phase 1+2+3 完成 → 定时任务具备生产级可靠性（重试 + 监督 + 心跳）
 
-**里程碑 3（完整）**：Phase 1-4 完成 → TriMC 可脱离 K8s 在单机以守护进程方式运行
+**里程碑 3（完整）**：Phase 1-4 完成 → TriMMC 可脱离 K8s 在单机以守护进程方式运行
 
 ---
 
@@ -228,7 +228,7 @@
 | 风险 | 等级 | 缓解 |
 |------|------|------|
 | openclaw cron 模块深度依赖其 channel/gateway runtime | 中 | Phase 1 只吸收 schedule/store/timer 核心，不触碰 isolated-agent/delivery |
-| croner 库与 TriMC 依赖兼容性 | 低 | croner 是纯 cron 解析库，零依赖；已在 openclaw 生产环境验证 |
+| croner 库与 TriMMC 依赖兼容性 | 低 | croner 是纯 cron 解析库，零依赖；已在 openclaw 生产环境验证 |
 | 现有 sub-agent spawn 接入 supervisor 后行为变化 | 中 | Phase 3 改动点最小化，先并行跑逐步切换 |
 | 单机 service 管理与 K8s 双轨维护 | 低 | 抽象 service-manager 接口，K8s 和单机是同一接口的不同实现 |
 
@@ -239,7 +239,7 @@
 | 决策 | 结论 | 依据 |
 |------|------|------|
 | 是否吸收 daemon 全套（launchd/systemd/schtasks） | 不直接吸收，仅参考 | K8s 已覆盖生产环境服务生命周期 |
-| 是否吸收 delivery 模块 | 不吸收 | 依赖 openclaw 消息通道，TriMC 无此通道 |
+| 是否吸收 delivery 模块 | 不吸收 | 依赖 openclaw 消息通道，TriMMC 无此通道 |
 | 任务存储方案 | 先用 JSON 文件，后续迁 SQLite | 最小 MVP 原则；JSON 文件符合当前阶段 |
 | cron 库选择 | 使用 croner（与 openclaw 一致） | openclaw 已验证，npm 周下载量 50万+ |
 | heartbeat 模块归属 | Python 侧不变（IPD 案例检测）；新增 TS 侧（任务执行心跳） | 职责分离，不混合 |
@@ -249,7 +249,7 @@
 ## 8. 关联文档
 
 - CTO-003 Claude Code 吸收 Tier 1: `TriCompany/docs/engineering/cto-003-claude-code-absorption.md`
-- CTO-008-C 共享核心: `TriMC/docs/engineering/cto-008-C-shared-core.md`
-- CTO-008-M 通信协议: `TriMC/docs/engineering/cto-008-M-comm-protocol.md`
-- TriMC code-state: `TriMC/docs/registry/code-state.md`
+- CTO-008-C 共享核心: `TriMMC/docs/engineering/cto-008-C-shared-core.md`
+- CTO-008-M 通信协议: `TriMMC/docs/engineering/cto-008-M-comm-protocol.md`
+- TriMMC code-state: `TriMMC/docs/registry/code-state.md`
 - 吸收源: `TriMetaverse/reference/openclaw-v2026.3.28/src/cron/`, `src/process/supervisor/`, `src/infra/backoff.ts`

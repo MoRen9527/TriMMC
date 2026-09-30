@@ -55,7 +55,7 @@ timestamp: <ISO-8601>  # 可选
 ## 设计决策
 
 - 吸收 Claude Code `memdir/memoryTypes.ts` 的 frontmatter 约定（type / description / timestamp）
-- 未使用 Claude Code 的 `user` / `feedback` / `project` / `reference` 分类体系——TriMC 使用独立的四层记忆模型（soul / memory / colleagues / social）
+- 未使用 Claude Code 的 `user` / `feedback` / `project` / `reference` 分类体系——TriMMC 使用独立的四层记忆模型（soul / memory / colleagues / social）
 - `buildMemoryContext()` 是 Claude Code `formatMemoryManifest()` 的简化版——只扫描 frontmatter + 首行正文
 - 空 memory / colleagues 数组优雅跳过（返回 `{ files: [], count: 0 }`）
 - key 安全化：`[^a-zA-Z0-9_-]` → `_`，截断 64 字符

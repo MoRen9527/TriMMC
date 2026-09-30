@@ -1,7 +1,7 @@
 // ── LG-058 P1 config 端点真链路（HTTP 层，MMC 服务域面）──
 //
 // STE 纪律（09-15 第三次命中教训）：新端点必配真链路案——单测直调四函数
-// 不覆盖 app.ts 路由注册/URL 拼写/门集成，此处以 createTriMCApp 真实
+// 不覆盖 app.ts 路由注册/URL 拼写/门集成，此处以 createTriMMCApp 真实
 // HTTP 全链路补位。mock TriModel 上游随 boot pull 自然进食。
 // 形态对标 TriRLC/TriMLC config-endpoints.test.ts（P0 真链路族）。
 
@@ -11,7 +11,7 @@ import { createServer, type Server } from 'node:http';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createTriMCApp } from '../../src/server/app.js';
+import { createTriMMCApp } from '../../src/server/app.js';
 import { readEnv } from '../../src/config/env.js';
 import { stopKeyCache } from '../../src/config/key-cache.js';
 import { resetAppliedCacheForTest } from '../../src/config-sync/status.js';
@@ -20,7 +20,7 @@ import { resetModelCacheForTest } from '../../src/config-sync/default-model.js';
 const SAVED_ENV: Record<string, string | undefined> = {};
 
 let tmpConfigDir: string;
-let app: ReturnType<typeof createTriMCApp>;
+let app: ReturnType<typeof createTriMMCApp>;
 let mock: Server;
 let mockPort: number;
 
@@ -79,7 +79,7 @@ before(async () => {
   process.env.TRIMC_INTERNAL_TOKEN = TOKEN;
 
   const env = { ...readEnv(), port: 0, cronEnabled: false };
-  app = createTriMCApp(env);
+  app = createTriMMCApp(env);
   await app.start();
 });
 

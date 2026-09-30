@@ -1,14 +1,14 @@
-# TriMC 最小部署拓扑
+# TriMMC 最小部署拓扑
 
-- 文档定位：CARRY-004 执行设计 — TriMC 服务器正式版最小部署拓扑
+- 文档定位：CARRY-004 执行设计 — TriMMC 服务器正式版最小部署拓扑
 - 状态：DRAFT — CTO 执行中
 - 最后更新：2026-07-14
 - 维护归属：CTO（小狄）
-- 上游依据：`TriMC/docs/engineering/DESIGN.md` §1 两种部署形态
+- 上游依据：`TriMMC/docs/engineering/DESIGN.md` §1 两种部署形态
 
 ## 文档同步元信息
 
-- sourceOfTruth: TriMC/docs/engineering/deployment-topology.md
+- sourceOfTruth: TriMMC/docs/engineering/deployment-topology.md
 - publishedFrom: 当前文件（source）
 - syncMode: source-only
 - publishTier: source-only
@@ -18,14 +18,14 @@
 
 ## 1. 范围与目标
 
-本设计覆盖 TriMC 从零到最小可运行部署的完整路径：
+本设计覆盖 TriMMC 从零到最小可运行部署的完整路径：
 
-- **TriMC 服务器进程**（Node.js 20+, TypeScript → JS 构建产物）
+- **TriMMC 服务器进程**（Node.js 20+, TypeScript → JS 构建产物）
 - **TriModel 模型层**（bundled via `file:` dependency）
 - **PostgreSQL 数据库**（TaskController 持久化）
 - **API Key 注入**（DeepSeek 直连 + TriStaciss 平台）
 
-不覆盖：OpenClow Gateway、VSCodium Glue、本地域 TriLC 联调（这些属于后续阶段）。
+不覆盖：OpenClow Gateway、VSCodium Glue、本地域 TriRLC 联调（这些属于后续阶段）。
 
 ## 2. 最小部署拓扑
 
@@ -34,7 +34,7 @@
 │  Docker Compose / K8s Pod                                │
 │                                                          │
 │  ┌──────────────┐    ┌──────────────┐                    │
-│  │  TriMC       │    │  PostgreSQL  │                    │
+│  │  TriMMC       │    │  PostgreSQL  │                    │
 │  │  :8710       │◄──►│  :5432       │                    │
 │  │  (HTTP)      │    │  (内部)       │                    │
 │  └──────┬───────┘    └──────────────┘                    │
@@ -51,7 +51,7 @@
 
 ## 3. 组件说明
 
-### 3.1 TriMC Server
+### 3.1 TriMMC Server
 
 | 属性 | 值 |
 |------|-----|
@@ -81,7 +81,7 @@
 
 ## 4. 环境变量映射
 
-### 4.1 TriMC 层
+### 4.1 TriMMC 层
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
@@ -119,10 +119,10 @@ DEEPSEEK_API_KEY=sk-xxx        # 必填
 
 | 端口 | 服务 | 方向 | 说明 |
 |------|------|------|------|
-| 8710 | TriMC HTTP | Ingress | 对外服务端口 |
+| 8710 | TriMMC HTTP | Ingress | 对外服务端口 |
 | 5432 | PostgreSQL | 内部 | 仅容器网络内可见 |
 | 8000 | TriStaciss | 外部 | 模型平台路由（外部服务） |
-| 8008 | TriStaciss | 外部 | TriMC → TriStaciss 桥接 |
+| 8008 | TriStaciss | 外部 | TriMMC → TriStaciss 桥接 |
 
 ## 6. 健康检查
 

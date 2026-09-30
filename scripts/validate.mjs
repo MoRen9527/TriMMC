@@ -1,4 +1,4 @@
-// ── TriMC Code Brick Validator ──
+// ── TriMMC Code Brick Validator ──
 // CTO-007 Phase 2: Automated quality gate for code bricks.
 // Usage: node scripts/validate.mjs [--target <test-file-or-dir>]
 //
@@ -26,7 +26,7 @@ for (let i = 0; i < args.length; i++) {
   if (args[i] === '--target' && i + 1 < args.length) {
     target = args[++i];
   } else if (args[i] === '--help' || args[i] === '-h') {
-    console.log(`TriMC Validator — CTO-007 Phase 2
+    console.log(`TriMMC Validator — CTO-007 Phase 2
 
 Usage: node scripts/validate.mjs [--target <path>]
 

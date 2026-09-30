@@ -5,7 +5,7 @@
 
 ## 背景
 
-TriMC v0.2.0 编排层四组件之一：**Context Builder**（公司背景 + registry 引用 → CLAUDE.md 注入）。目标是让每个 agent 实例的 system prompt 自动携带项目上下文（模块角色、tier能力、AGENTS.md、code-state 摘要），而非依赖调用者手动拼接。
+TriMMC v0.2.0 编排层四组件之一：**Context Builder**（公司背景 + registry 引用 → CLAUDE.md 注入）。目标是让每个 agent 实例的 system prompt 自动携带项目上下文（模块角色、tier能力、AGENTS.md、code-state 摘要），而非依赖调用者手动拼接。
 
 吸收自 Claude Code `prompt.ts` 的 section-building 模式，但不复制其 agent tool listing——Context Builder 注入的是**项目上下文**，而非工具列表。
 
@@ -67,7 +67,7 @@ node scripts/validate.mjs
 
 - **编排层进度**: v0.2.0 四组件中 Context Builder 首先完成
 - **agentLoop 行为**: 不传 `context` 时行为完全不变（向后兼容）
-- **后续集成点**: TriMC HTTP server 在构建 agent 实例时可通过 ContextSources 注入模块背景
+- **后续集成点**: TriMMC HTTP server 在构建 agent 实例时可通过 ContextSources 注入模块背景
 
 ---
 

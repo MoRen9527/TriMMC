@@ -1,4 +1,4 @@
-// ── TriMC E2E Real Model Smoke Tests ──
+// ── TriMMC E2E Real Model Smoke Tests ──
 // CTO-015: Validates the full v0.2.0 pipeline with real DeepSeek API calls.
 // Tests: contract-driven agent loop, tool calling, usage summary, multi-turn conversation.
 //
@@ -131,8 +131,8 @@ describe('E2E: Real model �?Contract-driven Q&A', { skip: skipReason }, () => 
 
   before(async () => {
     // Use port 0 for OS-assigned port; real fetch (no mock)
-    const { createTriMCApp } = await import('../../src/server/app.js');
-    app = createTriMCApp({ port: 0 } as never);
+    const { createTriMMCApp } = await import('../../src/server/app.js');
+    app = createTriMMCApp({ port: 0 } as never);
     await app.start();
     serverUrl = `http://127.0.0.1:${app.port}`;
   });
@@ -216,8 +216,8 @@ describe('E2E: Real model �?Tool calling', { skip: skipReason }, () => {
     const { writeFile } = await import('node:fs/promises');
     await writeFile(fixturePath, 'E2E_TOOL_CALL_SUCCESS: The agent read this file correctly.', 'utf-8');
 
-    const { createTriMCApp } = await import('../../src/server/app.js');
-    app = createTriMCApp({ port: 0 } as never);
+    const { createTriMMCApp } = await import('../../src/server/app.js');
+    app = createTriMMCApp({ port: 0 } as never);
     await app.start();
     serverUrl = `http://127.0.0.1:${app.port}`;
   });
@@ -278,8 +278,8 @@ describe('E2E: Real model �?Legacy no-contract', { skip: skipReason }, () => {
   let app: { start(): Promise<void>; stop(): Promise<void>; port: number };
 
   before(async () => {
-    const { createTriMCApp } = await import('../../src/server/app.js');
-    app = createTriMCApp({ port: 0 } as never);
+    const { createTriMMCApp } = await import('../../src/server/app.js');
+    app = createTriMMCApp({ port: 0 } as never);
     await app.start();
     serverUrl = `http://127.0.0.1:${app.port}`;
   });
@@ -317,8 +317,8 @@ describe('E2E: Real model �?Multi-turn', { skip: skipReason }, () => {
   let app: { start(): Promise<void>; stop(): Promise<void>; port: number };
 
   before(async () => {
-    const { createTriMCApp } = await import('../../src/server/app.js');
-    app = createTriMCApp({ port: 0 } as never);
+    const { createTriMMCApp } = await import('../../src/server/app.js');
+    app = createTriMMCApp({ port: 0 } as never);
     await app.start();
     serverUrl = `http://127.0.0.1:${app.port}`;
   });

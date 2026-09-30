@@ -1,6 +1,6 @@
-// ── TriMC Sub-Agent Types ──
+// ── TriMMC Sub-Agent Types ──
 // P3T1: Agent definition system absorbed from Claude Code Phase 3 Tier 1.
-// Maps Claude Code sub-agent architecture to TriMC agent loop.
+// Maps Claude Code sub-agent architecture to TriMMC agent loop.
 
 import type { ToolDefinition, Message } from 'trimodel';
 import type { PermissionMode } from '../permissions-engine/types.js';

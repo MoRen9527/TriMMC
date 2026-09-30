@@ -1,4 +1,4 @@
-// ── TriMC Context Builder Tests ──
+// ── TriMMC Context Builder Tests ──
 // CTO-004: Tests for buildContext() and mergeContextWithPrompt().
 // Covers: full context assembly, minimal context, each section builder, merge behavior.
 

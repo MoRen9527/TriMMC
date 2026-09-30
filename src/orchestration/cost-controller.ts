@@ -1,6 +1,6 @@
 // ── Cost Controller ──
 // 3-layer budget: company-daily, employee-daily, per-task
-// Source: TriMC/docs/engineering/employee-orchestration-design.md §3.4
+// Source: TriMMC/docs/engineering/employee-orchestration-design.md §3.4
 
 import type {
   EmployeeRecord,

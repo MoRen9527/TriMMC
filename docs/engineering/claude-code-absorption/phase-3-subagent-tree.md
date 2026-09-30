@@ -4,13 +4,13 @@
 **Date**: 2026-07-18
 **Status**: Complete（小柯验证通过）
 **Source**: Claude Code 2.1.88 vendor (`src/tools/AgentTool/` 完整目录，15 个源文件，~5000+ 行)
-**Target**: TriMC（当前 sub-agent 基础设施：0%）
+**Target**: TriMMC（当前 sub-agent 基础设施：0%）
 
 ---
 
 ## 1. Executive Summary
 
-Claude Code 的 sub-agent 系统是其最关键的分工原语——把"一个 agent 做所有事"升级为"树形多 agent 协同"。TriMC 当前完全没有 sub-agent 概念（`src/agent-loop/` 只有单 agent 的 tool dispatch while-true 循环）。
+Claude Code 的 sub-agent 系统是其最关键的分工原语——把"一个 agent 做所有事"升级为"树形多 agent 协同"。TriMMC 当前完全没有 sub-agent 概念（`src/agent-loop/` 只有单 agent 的 tool dispatch while-true 循环）。
 
 Phase 3 完整拆解了 Claude Code 子代理树的**10 个子系统**：Agent 定义系统（BuiltIn/Custom/Plugin 三层）、加载管道、执行模型三态、Fork 共享 Prompt Cache、工具池继承与隔离、权限模式覆盖、Agent 记忆（3 层 scope + 快照）、Worktree 隔离、Transcript 与 Resume、AgentTool 核心 Handler。
 
@@ -655,11 +655,11 @@ finally {
 
 ---
 
-## 4. TriMC Current State Gap Analysis
+## 4. TriMMC Current State Gap Analysis
 
 ### 4.1 当前状态
 
-| 子系统 | TriMC 现状 | Claude Code 实现 | 差距 |
+| 子系统 | TriMMC 现状 | Claude Code 实现 | 差距 |
 |---|---|---|---|
 | Agent 定义系统 | 无 | BuiltIn/Custom/Plugin 三层 | 100% |
 | Agent 加载管道 | 无 | 6 层来源 + 覆盖优先级 | 100% |
@@ -673,7 +673,7 @@ finally {
 | AgentTool Handler | 无 | 1200+ 行 spawn 路由器 | 100% |
 | 背景任务注册 | 无 | BackgroundTaskRegistry | 100% |
 
-**结论**：TriMC sub-agent 基础设施覆盖率 = **0%**。
+**结论**：TriMMC sub-agent 基础设施覆盖率 = **0%**。
 
 ### 4.2 对现有系统的影响
 
@@ -688,7 +688,7 @@ finally {
 
 ### 5.1 Tier 1: MVP 必需（Phase 3a）
 
-**目标**：让 TriMC 的子代理能工作——spawn → run → return results
+**目标**：让 TriMMC 的子代理能工作——spawn → run → return results
 
 | 积木 | 描述 | 依赖 | 估算 |
 |---|---|---|---|
@@ -697,7 +697,7 @@ finally {
 | **Sync 执行路径** | `runAgent.ts` 核心 — system prompt 构建 → createSubagentContext → query | Agent 定义系统 | L |
 | **Tools resolve** | `resolveAgentTools()` + `filterToolsForAgent()` | Tool 注册表 | M |
 | **权限覆盖** | 6 条覆盖规则 | Permission system | S |
-| **AgentTool 注册到 tool registry** | 将 Agent 工具注入 TriMC 的 tool dispatch | AgentTool spawn router | S |
+| **AgentTool 注册到 tool registry** | 将 Agent 工具注入 TriMMC 的 tool dispatch | AgentTool spawn router | S |
 
 ### 5.2 Tier 2: 成本优化（Phase 3b）
 
@@ -729,7 +729,7 @@ finally {
 
 ---
 
-## 6. Key Design Decisions for TriMC
+## 6. Key Design Decisions for TriMMC
 
 ### 6.1 是否采纳 Fork 子代理？
 
@@ -741,17 +741,17 @@ finally {
 
 **建议**: Tier 2 采纳，但初期可简化为"文件锁"替代。
 
-理由：TriMC 的 sub-agent 使用场景当前主要是代码分析和规划（只读），Worktree 隔离的主要价值在"可写并行 agent"场景。Tier 1 可先跳过，用文件操作日志/锁替代。
+理由：TriMMC 的 sub-agent 使用场景当前主要是代码分析和规划（只读），Worktree 隔离的主要价值在"可写并行 agent"场景。Tier 1 可先跳过，用文件操作日志/锁替代。
 
 ### 6.3 是否采纳 Agent 记忆？
 
-**建议**: Tier 3 采纳，但先定义记忆 schema 与 TriMC 的四层记忆体系（Soul Memory → Project Memory → Session Memory → Tool Memory）的映射关系。
+**建议**: Tier 3 采纳，但先定义记忆 schema 与 TriMMC 的四层记忆体系（Soul Memory → Project Memory → Session Memory → Tool Memory）的映射关系。
 
 ### 6.4 Built-in Agent 裁剪策略
 
-TriMC 当前不需要全部 6 个 Claude Code built-in agent：
+TriMMC 当前不需要全部 6 个 Claude Code built-in agent：
 - ✅ **保留**: GeneralPurpose（通用委派）、Explore（代码探索）
-- ✅ **适配**: Plan → 结合 TriMC 的产品规划体系
+- ✅ **适配**: Plan → 结合 TriMMC 的产品规划体系
 - ⚠️ **暂缓**: ClaudeCodeGuide（Claude Code 文档问答 → 无此需求）、StatuslineSetup（CLI 专属）
 - ✅ **采纳**: Verification（证验器）— 与小柯模式天然契合
 
@@ -809,24 +809,24 @@ TriMC 当前不需要全部 6 个 Claude Code built-in agent：
 
 ## 9. Sources
 
-- `TriMC/vendor/claude-code/src/tools/AgentTool/AgentTool.tsx` — 完整阅读（1200+ 行）
-- `TriMC/vendor/claude-code/src/tools/AgentTool/loadAgentsDir.ts` — 完整阅读（500+ 行）
-- `TriMC/vendor/claude-code/src/tools/AgentTool/runAgent.ts` — 完整阅读（730+ 行）
-- `TriMC/vendor/claude-code/src/tools/AgentTool/agentToolUtils.ts` — 完整阅读（400+ 行）
-- `TriMC/vendor/claude-code/src/tools/AgentTool/prompt.ts` — 完整阅读（288 行）
-- `TriMC/vendor/claude-code/src/tools/AgentTool/forkSubagent.ts` — 完整阅读
-- `TriMC/vendor/claude-code/src/tools/AgentTool/forkedAgent.ts` — 完整阅读
-- `TriMC/vendor/claude-code/src/tools/AgentTool/builtInAgents.ts` — 完整阅读（72 行）
-- `TriMC/vendor/claude-code/src/tools/AgentTool/built-in/generalPurposeAgent.ts` — 完整阅读
-- `TriMC/vendor/claude-code/src/tools/AgentTool/built-in/exploreAgent.ts` — 完整阅读
-- `TriMC/vendor/claude-code/src/tools/AgentTool/built-in/planAgent.ts` — 完整阅读
-- `TriMC/vendor/claude-code/src/tools/AgentTool/built-in/verificationAgent.ts` — 完整阅读（153 行）
-- `TriMC/vendor/claude-code/src/tools/AgentTool/built-in/claudeCodeGuideAgent.ts` — 完整阅读（206 行）
-- `TriMC/vendor/claude-code/src/tools/AgentTool/built-in/statuslineSetup.ts` — 完整阅读（145 行）
-- `TriMC/vendor/claude-code/src/tools/AgentTool/agentMemory.ts` — 完整阅读（178 行）
-- `TriMC/vendor/claude-code/src/tools/AgentTool/agentMemorySnapshot.ts` — 完整阅读（198 行）
-- `TriMC/vendor/claude-code/src/tools/AgentTool/resumeAgent.ts` — 完整阅读（200+ 行）
-- `TriMC/vendor/claude-code/src/tools/AgentTool/agentDisplay.ts` — 完整阅读（105 行）
-- `TriMC/vendor/claude-code/src/constants/tools.ts` — 工具禁止列表常量验证
-- `TriMC/vendor/claude-code/src/coordinator/workerAgent.ts` — 验证为空壳
-- `TriMC/docs/registry/code-state.md` — TriMC 当前 sub-agent 状态（0%）
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/AgentTool.tsx` — 完整阅读（1200+ 行）
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/loadAgentsDir.ts` — 完整阅读（500+ 行）
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/runAgent.ts` — 完整阅读（730+ 行）
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/agentToolUtils.ts` — 完整阅读（400+ 行）
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/prompt.ts` — 完整阅读（288 行）
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/forkSubagent.ts` — 完整阅读
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/forkedAgent.ts` — 完整阅读
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/builtInAgents.ts` — 完整阅读（72 行）
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/built-in/generalPurposeAgent.ts` — 完整阅读
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/built-in/exploreAgent.ts` — 完整阅读
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/built-in/planAgent.ts` — 完整阅读
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/built-in/verificationAgent.ts` — 完整阅读（153 行）
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/built-in/claudeCodeGuideAgent.ts` — 完整阅读（206 行）
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/built-in/statuslineSetup.ts` — 完整阅读（145 行）
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/agentMemory.ts` — 完整阅读（178 行）
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/agentMemorySnapshot.ts` — 完整阅读（198 行）
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/resumeAgent.ts` — 完整阅读（200+ 行）
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/agentDisplay.ts` — 完整阅读（105 行）
+- `TriMMC/vendor/claude-code/src/constants/tools.ts` — 工具禁止列表常量验证
+- `TriMMC/vendor/claude-code/src/coordinator/workerAgent.ts` — 验证为空壳
+- `TriMMC/docs/registry/code-state.md` — TriMMC 当前 sub-agent 状态（0%）

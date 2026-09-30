@@ -1,6 +1,6 @@
 // ── Dispatch Proxy Unit Tests ──
 // 6-step pipeline: classify → estimate → route → budget → schedule → dispatch
-// Source: TriMC/docs/engineering/employee-orchestration-design.md §5.5
+// Source: TriMMC/docs/engineering/employee-orchestration-design.md §5.5
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert';

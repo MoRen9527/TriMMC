@@ -1,6 +1,6 @@
 // ── Employee Registry ──
 // Phase A: static contract loading via loadContract/resolveContracts
-// Source: TriMC/docs/engineering/employee-orchestration-design.md §3.1
+// Source: TriMMC/docs/engineering/employee-orchestration-design.md §3.1
 
 import { resolveContracts } from '../contracts/resolver.js';
 import type { AgentContract } from '../contracts/agent-contract.js';

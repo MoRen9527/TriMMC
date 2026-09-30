@@ -1,4 +1,4 @@
-// ── TriMC Key Cache → config-cache（LG-058 P1 服务域面接入；正形=TriRLC N3 泛化件）──
+// ── TriMMC Key Cache → config-cache（LG-058 P1 服务域面接入；正形=TriRLC N3 泛化件）──
 // LG-058 P0③ (2026-09-28): 机制从「keys 单维」泛化为「config 多维」
 // （keys + default_model + 策略摘要 strategy），tier1 拉取端点从
 // /v1/config/keys 换为 /v1/config/cards/{face}?view=pull（CTO 方案 §三
@@ -67,7 +67,7 @@ export interface KeyCache {
 
 // ── Face 与归因码（LG-058）──
 
-// 本仓域面身份（TriMC=mmc M·服务域面(sg 8710)；端点 TRIMODEL_API_URL 参数化、face
+// 本仓域面身份（TriMMC=mmc M·服务域面(sg 8710)；端点 TRIMODEL_API_URL 参数化、face
 // 随仓身份固定——寄居过渡未来分部署只换端点不换 face，方案 §4.4）。
 export const FACE_ID = process.env.TRIMODEL_FACE_ID ?? 'mmc';
 
@@ -279,7 +279,7 @@ let _onKeyCacheUpdated: KeyCacheUpdatedCallback | null = null;
 
 /**
  * Register a callback to be invoked when the key cache is refreshed.
- * Used by TriLC consumer layer to re-initialize ModelClient with fresh keys.
+ * Used by TriRLC consumer layer to re-initialize ModelClient with fresh keys.
  */
 export function onKeyCacheUpdated(callback: KeyCacheUpdatedCallback): void {
   _onKeyCacheUpdated = callback;

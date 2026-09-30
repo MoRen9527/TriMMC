@@ -1,4 +1,4 @@
-// ── TriMC HTTP Agent Endpoint Integration Tests ──
+// ── TriMMC HTTP Agent Endpoint Integration Tests ──
 // CTO-014: Validates POST /internal/v1/agent with supertest-level HTTP assertions.
 // Covers: contract pipeline, no-contract backward compat, SSE/JSON modes, error paths.
 // Pattern: 小全(blocks) + 小柯(assertions)
@@ -141,8 +141,8 @@ describe('POST /internal/v1/agent [JSON, legacy]', () => {
   before(async () => {
     process.env.DEEPSEEK_API_KEY = 'sk-test-mock-key';
     globalThis.fetch = makeFetchMock('Legacy mode response');
-    const { createTriMCApp } = await import('../src/server/app.js');
-    app = createTriMCApp({ port: 0 } as never);
+    const { createTriMMCApp } = await import('../src/server/app.js');
+    app = createTriMMCApp({ port: 0 } as never);
     await app.start();
     serverUrl = `http://127.0.0.1:${app.port}`;
   });
@@ -224,8 +224,8 @@ describe('POST /internal/v1/agent [JSON, contract pipeline]', () => {
   before(async () => {
     process.env.DEEPSEEK_API_KEY = 'sk-test-mock-key';
     globalThis.fetch = makeFetchMock('Plain response', 'I see contract tools');
-    const { createTriMCApp } = await import('../src/server/app.js');
-    app = createTriMCApp({ port: 0 } as never);
+    const { createTriMMCApp } = await import('../src/server/app.js');
+    app = createTriMMCApp({ port: 0 } as never);
     await app.start();
     serverUrl = `http://127.0.0.1:${app.port}`;
   });
@@ -330,8 +330,8 @@ describe('POST /internal/v1/agent [SSE, legacy]', () => {
   before(async () => {
     process.env.DEEPSEEK_API_KEY = 'sk-test-mock-key';
     globalThis.fetch = makeFetchMock('SSE legacy ok');
-    const { createTriMCApp } = await import('../src/server/app.js');
-    app = createTriMCApp({ port: 0 } as never);
+    const { createTriMMCApp } = await import('../src/server/app.js');
+    app = createTriMMCApp({ port: 0 } as never);
     await app.start();
     serverUrl = `http://127.0.0.1:${app.port}`;
   });
@@ -397,8 +397,8 @@ describe('POST /internal/v1/agent [SSE, contract pipeline]', () => {
   before(async () => {
     process.env.DEEPSEEK_API_KEY = 'sk-test-mock-key';
     globalThis.fetch = makeFetchMock('Legacy SSE stream ok', 'Contract SSE stream ok');
-    const { createTriMCApp } = await import('../src/server/app.js');
-    app = createTriMCApp({ port: 0 } as never);
+    const { createTriMMCApp } = await import('../src/server/app.js');
+    app = createTriMMCApp({ port: 0 } as never);
     await app.start();
     serverUrl = `http://127.0.0.1:${app.port}`;
   });
@@ -474,8 +474,8 @@ describe('POST /internal/v1/agent [cross-cutting]', () => {
   before(async () => {
     process.env.DEEPSEEK_API_KEY = 'sk-test-mock-key';
     globalThis.fetch = makeFetchMock('Cross-cutting mock');
-    const { createTriMCApp } = await import('../src/server/app.js');
-    app = createTriMCApp({ port: 0 } as never);
+    const { createTriMMCApp } = await import('../src/server/app.js');
+    app = createTriMMCApp({ port: 0 } as never);
     await app.start();
     serverUrl = `http://127.0.0.1:${app.port}`;
   });

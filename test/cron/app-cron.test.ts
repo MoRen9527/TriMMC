@@ -1,5 +1,5 @@
 /**
- * app-cron smoke — real createTriMCApp assembly:
+ * app-cron smoke — real createTriMMCApp assembly:
  * healthz cron block + cron routes wired into the server if-chain + lifecycle.
  */
 
@@ -9,12 +9,12 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { overrideConfigDir, resetConfigDir, invalidateJobStoreCache } from '@tricompany/agent-core';
-import { createTriMCApp } from '../../src/server/app.js';
-import { readEnv, type TriMCEnv } from '../../src/config/env.js';
+import { createTriMMCApp } from '../../src/server/app.js';
+import { readEnv, type TriMMCEnv } from '../../src/config/env.js';
 
 const originalFetch = globalThis.fetch;
 
-describe('TriMC app cron assembly', () => {
+describe('TriMMC app cron assembly', () => {
   let app: { start(): Promise<void>; stop(): Promise<void>; port: number };
   let tmpDir: string;
   let baseUrl: string;
@@ -24,8 +24,8 @@ describe('TriMC app cron assembly', () => {
     overrideConfigDir(tmpDir);
     invalidateJobStoreCache();
 
-    const env: TriMCEnv = { ...readEnv(), port: 0 };
-    app = createTriMCApp(env);
+    const env: TriMMCEnv = { ...readEnv(), port: 0 };
+    app = createTriMMCApp(env);
     await app.start();
     baseUrl = `http://127.0.0.1:${app.port}`;
   });
@@ -87,8 +87,8 @@ describe('TriMC app cron assembly', () => {
     });
 
     await app.stop();
-    const env: TriMCEnv = { ...readEnv(), port: 0 };
-    app = createTriMCApp(env);
+    const env: TriMMCEnv = { ...readEnv(), port: 0 };
+    app = createTriMMCApp(env);
     await app.start();
     baseUrl = `http://127.0.0.1:${app.port}`;
 

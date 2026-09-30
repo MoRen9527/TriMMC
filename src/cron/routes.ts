@@ -1,7 +1,7 @@
 /**
  * Cron Routes — HTTP handlers for /internal/v1/cron/*.
  *
- * Behavioral baseline: TriLC cron routes (POST jobs → 201, list {ok,jobs,count},
+ * Behavioral baseline: TriRLC cron routes (POST jobs → 201, list {ok,jobs,count},
  * log {ok,logs,count}, status {ok,status}). Returns true when the request was
  * handled; false lets the app.ts if-chain continue (final 404).
  */

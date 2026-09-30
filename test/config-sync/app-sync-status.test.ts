@@ -1,5 +1,5 @@
 /**
- * app-sync-status smoke — real createTriMCApp assembly（i4-2 §三.3）：
+ * app-sync-status smoke — real createTriMMCApp assembly（i4-2 §三.3）：
  * GET /internal/v1/config/sync/status inline 路由挂载 + 磁盘真源读取。
  * TRIMC_CONFIG_DIR / TRIMC_FLEET_ROOT 指向临时目录隔离（生产 env 不可达）。
  */
@@ -10,13 +10,13 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { overrideConfigDir, resetConfigDir, invalidateJobStoreCache } from '@tricompany/agent-core';
-import { createTriMCApp } from '../../src/server/app.js';
-import { readEnv, type TriMCEnv } from '../../src/config/env.js';
+import { createTriMMCApp } from '../../src/server/app.js';
+import { readEnv, type TriMMCEnv } from '../../src/config/env.js';
 import { resetAppliedCacheForTest } from '../../src/config-sync/status.js';
 
 const originalFetch = globalThis.fetch;
 
-describe('TriMC app config-sync status assembly', () => {
+describe('TriMMC app config-sync status assembly', () => {
   let app: { start(): Promise<void>; stop(): Promise<void>; port: number };
   let tmpConfigDir: string;
   let tmpFleetRoot: string;
@@ -33,8 +33,8 @@ describe('TriMC app config-sync status assembly', () => {
     invalidateJobStoreCache();
     resetAppliedCacheForTest();
 
-    const env: TriMCEnv = { ...readEnv(), port: 0, cronEnabled: false };
-    app = createTriMCApp(env);
+    const env: TriMMCEnv = { ...readEnv(), port: 0, cronEnabled: false };
+    app = createTriMMCApp(env);
     await app.start();
     baseUrl = `http://127.0.0.1:${app.port}`;
   });

@@ -5,12 +5,12 @@
 | 状态       | 设计完成 / 待实现                                                                |
 | 版本       | v1.0.0                                                                           |
 | 作者       | 小全执笔，小柯验证，小狄审核                                                     |
-| 依赖       | TriPilot（已有）/ TriLC（已有）/ TriCode（待初始化）/ cto-008-m-comm-protocol（已设计） |
+| 依赖       | TriPilot（已有）/ TriRLC（已有）/ TriCode（待初始化）/ cto-008-m-comm-protocol（已设计） |
 | 最后更新   | 2026-07-16                                                                       |
 
 ## 1. 目标
 
-将 TriMetaverse 四模块整合为 **单一 PC 桌面应用**，以 VSCodium 为 Electron 壳，TriPilot 为交互入口，TriLC 为本地执行引擎，TriCode 为工具 glue 层。各模块保持独立 git 仓，通过分发脚本统一组装。
+将 TriMetaverse 四模块整合为 **单一 PC 桌面应用**，以 VSCodium 为 Electron 壳，TriPilot 为交互入口，TriRLC 为本地执行引擎，TriCode 为工具 glue 层。各模块保持独立 git 仓，通过分发脚本统一组装。
 
 ---
 
@@ -19,9 +19,9 @@
 | 模块       | 当前形态                                   | 打包就绪度 | 缺口                                         |
 | ---------- | ------------------------------------------ | ---------- | -------------------------------------------- |
 | **TriPilot** | VS Code 扩展（`vsce package` 可用）        | 🟡 70%     | VSCodium 兼容性需验证；需预配置默认 provider  |
-| **TriLC**  | Node.js HTTP 服务器 + agentLoop            | 🟡 60%     | 缺少 CLI 入口（start/stop/status）；需自启动  |
+| **TriRLC**  | Node.js HTTP 服务器 + agentLoop            | 🟡 60%     | 缺少 CLI 入口（start/stop/status）；需自启动  |
 | **TriCode** | 纯产品规格，无代码                         | 🔴 5%      | 模块骨架、glue 接口、各工具 adapter 均待实现  |
-| **TriMC**  | 中央调度服务器（远端）                     | 🟢 N/A     | 不参与 PC 打包（云端部署）                    |
+| **TriMMC**  | 中央调度服务器（远端）                     | 🟢 N/A     | 不参与 PC 打包（云端部署）                    |
 
 ### 2.1 TriPilot 现状
 
@@ -37,12 +37,12 @@
     "tripilot.modelsDirect.defaultModel": "deepseek-v4-pro"
   }
   ```
-  — TriPilot 通过 `models-direct` 模式直连 TriLC，TriLC 负责代理到 TriMC
+  — TriPilot 通过 `models-direct` 模式直连 TriRLC，TriRLC 负责代理到 TriMMC
 
-### 2.2 TriLC 现状
+### 2.2 TriRLC 现状
 
 - `src/index.ts`：启动 daemon + HTTP 服务器（端口默认 8711）
-- `POST /internal/v1/agent`：SSE/JSON 双模式，自动 proxy 到 TriMC 或本地 agentLoop
+- `POST /internal/v1/agent`：SSE/JSON 双模式，自动 proxy 到 TriMMC 或本地 agentLoop
 - `ConnectionManager`：3 态切换（connected/degraded/local）
 - **预配置 `vscodiumGlueBaseUrl`**：`process.env.VSCODIUM_GLUE_BASE_URL ?? 'http://127.0.0.1:8730'`
 - **缺口**：无 CLI 命令（`trilc start` / `trilc stop` / `trilc status`），需添加
@@ -72,7 +72,7 @@
 │  │  │(webview)│  │ Servers  │  │ (ceo/cpo/cto/...)  │  │   │
 │  │  └────┬────┘  └──────────┘  └────────────────────┘  │   │
 │  │       │                                              │   │
-│  │       │  models-direct (HTTP to TriLC)               │   │
+│  │       │  models-direct (HTTP to TriRLC)               │   │
 │  │       ▼                                              │   │
 │  │  ┌──────────────────────────────────────────────┐   │   │
 │  │  │            TriCode Glue (npm pkg)             │   │   │
@@ -83,7 +83,7 @@
 │  └───────────────────────┼─────────────────────────────┘   │
 │                          │                                  │
 │  ┌───────────────────────┼──────────────────────────────┐  │
-│  │                  TriLC Daemon                        │  │
+│  │                  TriRLC Daemon                        │  │
 │  │  ┌────────────────────▼──────────────────────────┐  │  │
 │  │  │  HTTP Server (:8711)                          │  │  │
 │  │  │  POST /internal/v1/agent  ← TriPilot 调用     │  │  │
@@ -91,7 +91,7 @@
 │  │  └────────────────────┬──────────────────────────┘  │  │
 │  │  ┌────────────────────▼──────────────────────────┐  │  │
 │  │  │  ConnectionManager                            │  │  │
-│  │  │  connected → proxy to TriMC                   │  │  │
+│  │  │  connected → proxy to TriMMC                   │  │  │
 │  │  │  degraded  → local agentLoop                  │  │  │
 │  │  └───────────────────────────────────────────────┘  │  │
 │  │  ┌────────────────────────────────────────────────┐  │  │
@@ -103,7 +103,7 @@
                           │ HTTP (在线时)
                           ▼
               ┌──────────────────────┐
-              │     TriMC (云端)      │
+              │     TriMMC (云端)      │
               │  POST /internal/v1/  │
               │  agent               │
               └──────────────────────┘
@@ -115,10 +115,10 @@
 用户输入 → TriPilot Chat UI
            │ models-direct POST /v1/chat/completions
            ▼
-         TriLC (:8711)
+         TriRLC (:8711)
            │ POST /internal/v1/agent
-           ├── TriMC 在线 → proxy → TriMC agentLoop
-           └── TriMC 离线 → local agentLoop (agent-core)
+           ├── TriMMC 在线 → proxy → TriMMC agentLoop
+           └── TriMMC 离线 → local agentLoop (agent-core)
            │
            ▼ SSE/JSON 流式响应
          TriPilot Chat UI 渲染
@@ -128,8 +128,8 @@
 
 | 端口  | 服务                       | 说明                       |
 | ----- | -------------------------- | -------------------------- |
-| 8710  | TriMC（云端）              | PC 桌面不捆绑              |
-| 8711  | TriLC daemon               | PC 本地自启动              |
+| 8710  | TriMMC（云端）              | PC 桌面不捆绑              |
+| 8711  | TriRLC daemon               | PC 本地自启动              |
 | 8730  | VSCodium Glue（预留）      | 当前未使用，未来扩展用     |
 
 ---
@@ -160,7 +160,7 @@
 - `vscode.lm` API 在 VSCodium 中可能不可用 → 桌面版默认使用 `models-direct`
 - 扩展签名：VSCodium 接受未签名扩展，vsce 打包时 `--allow-missing-repository`
 
-### 4.2 TriLC — CLI Daemon
+### 4.2 TriRLC — CLI Daemon
 
 **当前形态**：`node dist/index.js` 启动 HTTP 服务器。
 
@@ -205,7 +205,7 @@ trilc run [--port 8711]
 
 #### 4.2.4 自启动方案
 
-**方案 A（推荐）**：VSCodium 扩展激活时自动 spawn TriLC
+**方案 A（推荐）**：VSCodium 扩展激活时自动 spawn TriRLC
 
 ```typescript
 // TriPilot extension.ts activate()
@@ -219,7 +219,7 @@ if (isDesktopMode()) {
 ```
 
 - 优点：用户无感，打开 VSCodium 即启动
-- 缺点：TriPilot 需要知道 TriLC 的安装路径
+- 缺点：TriPilot 需要知道 TriRLC 的安装路径
 
 **方案 B**：操作系统级自启动（Windows 服务 / macOS launchd）
 
@@ -324,7 +324,7 @@ TriMetaverse Desktop/
 │       └── node_modules/
 │           └── @trimetaverse/
 │               └── tricode/   # TriCode glue（内联依赖）
-├── trilc/                     # TriLC daemon
+├── trilc/                     # TriRLC daemon
 │   ├── dist/                  # 编译后的 JS
 │   ├── node_modules/          # @trimetaverse/agent-core + trimodel
 │   └── package.json
@@ -342,10 +342,10 @@ TriMetaverse Desktop/
 #### 4.4.2 构建流水线
 
 ```
-1. TriMC/packages/agent-core  →  npm pack  →  trilc-v0.1.0.tgz
+1. TriMMC/packages/agent-core  →  npm pack  →  trilc-v0.1.0.tgz
                               →  npm pack  →  tricode-v0.1.0.tgz
 2. TriCode/                   →  tsc + npm pack → tricode-v0.1.0.tgz
-3. TriLC/                     →  tsc + npm install (指向本地 .tgz)
+3. TriRLC/                     →  tsc + npm install (指向本地 .tgz)
                               →  打包 trilc/
 4. TriPilot/                  →  npm install @trimetaverse/tricode (file:)
                               →  tsc + vsce package → tripilot-chat-0.0.1.vsix
@@ -358,7 +358,7 @@ TriMetaverse Desktop/
 
 ```batch
 @echo off
-:: 1. 注册 TriLC 为 Windows 自启动（可选）
+:: 1. 注册 TriRLC 为 Windows 自启动（可选）
 :: 2. 安装 TriPilot 扩展到 VSCodium
 ".\VSCodium\VSCodium.exe" --install-extension ".\extensions\tripilot-chat-0.0.1"
 :: 3. 注入预配置
@@ -375,10 +375,10 @@ copy /Y ".\config\settings.json" "%APPDATA%\VSCodium\User\settings.json"
 
 | 步骤  | 内容                                           | 估时   | 负责人     | 依赖       |
 | ----- | ---------------------------------------------- | ------ | ---------- | ---------- |
-| P.1   | TriLC CLI 入口（`src/cli.ts` + `package.json` bin）| 1.5h | 小全       | -           |
+| P.1   | TriRLC CLI 入口（`src/cli.ts` + `package.json` bin）| 1.5h | 小全       | -           |
 | P.2   | TriCode 工程骨架（package.json + 核心接口）    | 2h     | 小全       | -           |
 | P.3   | TriPilot ↔ TriCode 集成验证（npm link 链路）   | 1h     | 小全       | P.2         |
-| P.4   | TriPilot 自启动 TriLC（extension.ts spawn）    | 1.5h   | 小柯       | P.1, P.3    |
+| P.4   | TriPilot 自启动 TriRLC（extension.ts spawn）    | 1.5h   | 小柯       | P.1, P.3    |
 | P.5   | 统一分发脚本（组装 + 安装脚本）                | 2h     | 小柯       | P.1-P.4     |
 | P.6   | 跨平台验证（Windows + macOS + Linux）          | 3h     | 小柯       | P.5         |
 | P.7   | 文档 + code-state.md 更新                      | 1h     | 小狄       | P.6         |
@@ -388,7 +388,7 @@ copy /Y ".\config\settings.json" "%APPDATA%\VSCodium\User\settings.json"
 ### 5.2 依赖关系
 
 ```
-P.1 (TriLC CLI) ──┐
+P.1 (TriRLC CLI) ──┐
                   ├──► P.4 (自启动) ──┐
 P.2 (TriCode) ────┤                  ├──► P.5 (分发) ──► P.6 (验证) ──► P.7 (审核)
                   └──► P.3 (集成) ───┘
@@ -407,7 +407,7 @@ P.2 (TriCode) ────┤                  ├──► P.5 (分发) ──�
 
 | 步骤  | 内容                                | 理由                           |
 | ----- | ----------------------------------- | ------------------------------ |
-| ✅ P.1 | TriLC CLI                          | 必须——没有 CLI 无法独立运行    |
+| ✅ P.1 | TriRLC CLI                          | 必须——没有 CLI 无法独立运行    |
 | ✅ P.2 | TriCode 骨架（仅接口定义，无 adapter）| MVP：先定义接口，Tier 1 后续   |
 | ✅ P.4 | 自启动（方案 A）                     | 必须——用户体验                 |
 | ✅ P.5 | 简单分发（Windows 优先）             | MVP：先跑通 Windows            |
@@ -423,7 +423,7 @@ MVP 裁剪后：**7h**
 | 风险                           | 概率 | 影响 | 缓解措施                                         |
 | ------------------------------ | ---- | ---- | ------------------------------------------------ |
 | VSCodium 对 `vscode.lm` 不兼容 | 高   | 低   | 桌面版默认 `models-direct`，绕过 `vscode.lm`     |
-| TriLC `file:` 依赖无法跨机分发  | 中   | 高   | 分发时用 `npm pack` 打 `.tgz`，安装时本地解引用  |
+| TriRLC `file:` 依赖无法跨机分发  | 中   | 高   | 分发时用 `npm pack` 打 `.tgz`，安装时本地解引用  |
 | TriCode 无 adapter 时无法真实验证 | 高   | 中   | MVP 先定义接口，`executeCodeTask` 初始实现为 stub |
 | 自启动 spawn 路径问题           | 中   | 中   | 分发脚本写死相对路径，TriPilot 读环境变量         |
 | VSCodium 版本更新导致扩展不兼容 | 低   | 中   | 锁定 VSCodium 版本，扩展 `engines.vscode` 固定   |

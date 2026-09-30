@@ -59,13 +59,13 @@ describe('Agent Loop Tools', () => {
 
   it('write_file + read_file roundtrip', async () => {
     const filePath = join(testDir, 'hello.txt');
-    const writeResult = await executeTool('write_file', { path: filePath, content: 'Hello TriMC!' });
+    const writeResult = await executeTool('write_file', { path: filePath, content: 'Hello TriMMC!' });
     const writeParsed = JSON.parse(writeResult);
     assert.equal(writeParsed.ok, true);
 
     const readResult = await executeTool('read_file', { path: filePath });
     const readParsed = JSON.parse(readResult);
-    assert.ok(readParsed.content.includes('Hello TriMC!'));
+    assert.ok(readParsed.content.includes('Hello TriMMC!'));
   });
 
   it('edit_file replaces unique string', async () => {
@@ -75,14 +75,14 @@ describe('Agent Loop Tools', () => {
     const editResult = await executeTool('edit_file', {
       path: filePath,
       old_str: 'Hello World',
-      new_str: 'Hello TriMC!',
+      new_str: 'Hello TriMMC!',
     });
     const parsed = JSON.parse(editResult);
     assert.equal(parsed.ok, true);
 
     const readResult = await executeTool('read_file', { path: filePath });
     const readParsed = JSON.parse(readResult);
-    assert.equal(readParsed.content, 'Hello TriMC!');
+    assert.equal(readParsed.content, 'Hello TriMMC!');
   });
 
   it('edit_file returns error for non-unique old_str', async () => {

@@ -1,4 +1,4 @@
-﻿# TriMC 项目定位
+﻿# TriMMC 项目定位
 
 - 模块定位：统一 agent runtime 与 interaction core
 - 当前状态：当前为服务域 shadow / runtime 吸收主模块。

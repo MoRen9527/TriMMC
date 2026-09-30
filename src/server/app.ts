@@ -1,6 +1,6 @@
 ﻿import { createServer, type Server } from 'node:http';
 import * as path from 'node:path';
-import type { TriMCEnv } from '../config/env.js';
+import type { TriMMCEnv } from '../config/env.js';
 import {
   createCronService,
   createCronRouteHandler,
@@ -58,7 +58,7 @@ export function timingSafeStringEquals(a: string, b: string): boolean {
   return timingSafeEqual(ab, bb);
 }
 
-export function createTriMCApp(env: TriMCEnv) {
+export function createTriMMCApp(env: TriMMCEnv) {
   const taskController = new TaskController();
   const mirrorStore = new MirrorStore();
   // LG-058 P1：let——卡面 cache 更新回调需重建客户端（trimodel createModelClient
@@ -122,8 +122,8 @@ export function createTriMCApp(env: TriMCEnv) {
     async start(): Promise<void> {
       server = createServer(async (req, res) => {
         if (req.url === '/healthz') {
-          // cron 块对齐 TriLC app.ts healthz：{enabled, jobCount, degraded, consecutiveFailures}
-          // （enabled = service running；字段名与 TriLC healthz 一致）
+          // cron 块对齐 TriRLC app.ts healthz：{enabled, jobCount, degraded, consecutiveFailures}
+          // （enabled = service running；字段名与 TriRLC healthz 一致）
           const cronStatus = cronService ? await cronService.getStatus() : null;
           res.writeHead(200, { 'content-type': 'application/json' });
           res.end(
@@ -336,7 +336,7 @@ export function createTriMCApp(env: TriMCEnv) {
         }
 
         // ── POST /internal/v1/tasks/mirror ──
-        // S7: Receive task state snapshots from TriLC nodes.
+        // S7: Receive task state snapshots from TriRLC nodes.
         // CPO Q6c + CTO §7.2 S7.
         if (req.url === '/internal/v1/tasks/mirror' && req.method === 'POST') {
           const chunks: Buffer[] = [];
@@ -411,7 +411,7 @@ export function createTriMCApp(env: TriMCEnv) {
         }
 
         // ── GET /internal/v1/tasks ──
-        // S7: Query unified task state across all TriLC nodes.
+        // S7: Query unified task state across all TriRLC nodes.
         if (req.url?.startsWith('/internal/v1/tasks') && req.method === 'GET') {
           const urlObj = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
           const nodeId = urlObj.searchParams.get('nodeId') ?? undefined;
@@ -427,7 +427,7 @@ export function createTriMCApp(env: TriMCEnv) {
         }
 
         // ── 2.1/2.2: POST /internal/v1/tasks/result ──
-        // TriLC callback: task completed or failed, update TaskController.
+        // TriRLC callback: task completed or failed, update TaskController.
         if (req.url === '/internal/v1/tasks/result' && req.method === 'POST') {
           const chunks: Buffer[] = [];
           for await (const chunk of req) chunks.push(chunk);
@@ -440,7 +440,7 @@ export function createTriMCApp(env: TriMCEnv) {
             return;
           }
 
-          // Match by taskId (from dispatch) or sessionId (TriLC internal)
+          // Match by taskId (from dispatch) or sessionId (TriRLC internal)
           const lookupId = body.taskId ?? body.sessionId;
           if (!lookupId) {
             res.writeHead(400, { 'content-type': 'application/json' });
@@ -589,7 +589,7 @@ export function createTriMCApp(env: TriMCEnv) {
         }
 
         // ── POST /internal/v1/heartbeat ──
-        // Enhanced heartbeat from TriLC nodes. CTO-008-M §3.5.
+        // Enhanced heartbeat from TriRLC nodes. CTO-008-M §3.5.
         if (req.url === '/internal/v1/heartbeat' && req.method === 'POST') {
           const chunks: Buffer[] = [];
           for await (const chunk of req) {
@@ -701,7 +701,7 @@ export function createTriMCApp(env: TriMCEnv) {
         }
 
         // ── POST /internal/v1/events/replay ──
-        // Offline event replay from TriLC nodes. CTO-008-M §3.3.2.
+        // Offline event replay from TriRLC nodes. CTO-008-M §3.3.2.
         // M.5: Conflict arbitration integrated — arbitrate() detects double-assignment etc.
         if (req.url === '/internal/v1/events/replay' && req.method === 'POST') {
           const chunks: Buffer[] = [];

@@ -1,6 +1,6 @@
 type ProcessEnvLike = Record<string, string | undefined>;
 
-export type TriMCPostgresConfig = {
+export type TriMMCPostgresConfig = {
   connectionString: string;
   max: number;
   idleTimeoutMillis: number;
@@ -17,7 +17,7 @@ function getRuntimeEnv(): ProcessEnvLike {
   return maybeProcess.process?.env || {};
 }
 
-export function resolvePostgresConfig(env: ProcessEnvLike = getRuntimeEnv()): TriMCPostgresConfig {
+export function resolvePostgresConfig(env: ProcessEnvLike = getRuntimeEnv()): TriMMCPostgresConfig {
   const connectionString = env.TRIMC_DATABASE_URL || env.DATABASE_URL || '';
 
   return {
@@ -28,7 +28,7 @@ export function resolvePostgresConfig(env: ProcessEnvLike = getRuntimeEnv()): Tr
   };
 }
 
-export async function createPostgresPool(config: Partial<TriMCPostgresConfig> = {}) {
+export async function createPostgresPool(config: Partial<TriMMCPostgresConfig> = {}) {
   const resolved = {
     ...resolvePostgresConfig(),
     ...config

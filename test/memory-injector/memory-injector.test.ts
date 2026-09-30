@@ -1,4 +1,4 @@
-// TriMC Memory Injector Tests
+// TriMMC Memory Injector Tests
 // CTO-006: Validates four-layer memory injection (soul/memory/colleagues/social)
 // and buildMemoryContext integration with Context Builder pipeline.
 

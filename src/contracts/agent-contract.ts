@@ -1,5 +1,5 @@
 // ── Agent Contract Schema v1 TypeScript Types ──
-// TriMC v0.2.0 contract resolver canonical types
+// TriMMC v0.2.0 contract resolver canonical types
 // Source: CTO-20260709-001-agent-contract-schema.md
 
 /** Tool risk level — maps to policy-gate evaluation tiers */
@@ -44,7 +44,7 @@ export interface ToolSpec {
   scope: string[];
   risk_level: ToolRiskLevel;
   requires_approval: boolean;
-  /** TriMC v0.2.0 runtime routing target (e.g. "openclaw:fs:read") */
+  /** TriMMC v0.2.0 runtime routing target (e.g. "openclaw:fs:read") */
   runtime_equivalent: string;
 }
 
@@ -75,6 +75,6 @@ export interface AgentContract {
   io_contract: IOContract;
   /** Prose behavioral instructions not captured by structured fields */
   instructions?: string;
-  /** Runtime environment baseline (e.g. TriMC) */
+  /** Runtime environment baseline (e.g. TriMMC) */
   runtime_baseline?: RuntimeBaseline;
 }

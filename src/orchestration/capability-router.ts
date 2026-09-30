@@ -1,6 +1,6 @@
 // ── Capability Router ──
 // 3-tier matching: IO hard → authority soft → load tuning
-// Source: TriMC/docs/engineering/employee-orchestration-design.md §3.2
+// Source: TriMMC/docs/engineering/employee-orchestration-design.md §3.2
 
 import type { EmployeeRecord, RoutingDecision } from './types.js';
 

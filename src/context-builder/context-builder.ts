@@ -1,4 +1,4 @@
-// ── TriMC Context Builder ──
+// ── TriMMC Context Builder ──
 // CTO-004: Assembles project context (AGENTS.md, registry, tier capabilities)
 // into an injectable Markdown block for agent system prompts.
 // Pattern absorbed from Claude Code prompt.ts (AgentTool system prompt builder)

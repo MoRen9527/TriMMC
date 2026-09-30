@@ -9,12 +9,12 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { overrideConfigDir, resetConfigDir, invalidateJobStoreCache } from '@tricompany/agent-core';
-import { createTriMCApp } from '../../src/server/app.js';
-import { readEnv, type TriMCEnv } from '../../src/config/env.js';
+import { createTriMMCApp } from '../../src/server/app.js';
+import { readEnv, type TriMMCEnv } from '../../src/config/env.js';
 
 const TOKEN = 'test-token-0123456789abcdef';
 
-describe('TriMC /internal token auth gate', () => {
+describe('TriMMC /internal token auth gate', () => {
   let app: { start(): Promise<void>; stop(): Promise<void>; port: number };
   let tmpConfigDir: string;
   let baseUrl: string;
@@ -26,8 +26,8 @@ describe('TriMC /internal token auth gate', () => {
     process.env.TRIMC_CONFIG_DIR = tmpConfigDir;
     overrideConfigDir(tmpConfigDir);
     invalidateJobStoreCache();
-    const env: TriMCEnv = { ...readEnv(), port: 0, cronEnabled: false };
-    app = createTriMCApp(env);
+    const env: TriMMCEnv = { ...readEnv(), port: 0, cronEnabled: false };
+    app = createTriMMCApp(env);
     await app.start();
     baseUrl = `http://127.0.0.1:${app.port}`;
   });

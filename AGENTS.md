@@ -1,8 +1,8 @@
-# TriMC Agent Rules
+# TriMMC Agent Rules
 
 ## Module Role
 
-- TriMC 是服务域主控模块。
+- TriMMC 是服务域主控模块。
 - 它负责任务控制、服务域执行、审计、事件聚合与结算相关能力。
 - 当商业模式涉及服务域能力、任务编排、审计和结算时，必须考虑本模块。
 
@@ -18,11 +18,11 @@
 
 ## Current Registries
 
-- `TriMCBusinessStrategyRegistry`
-- `TriMCProductRegistry`
-- `TriMCCodeRegistry`
+- `TriMMCBusinessStrategyRegistry`
+- `TriMMCProductRegistry`
+- `TriMMCCodeRegistry`
 
-当前 registry agent canonical discovery 位于 `TriMC/.github/agents/`。同名中央 discovery 文件不应在 `TriMetaverse/.github/agents/` 并行保留；中央只通过 manifest 和 registry closeout 工作流路由本模块 registry。
+当前 registry agent canonical discovery 位于 `TriMMC/.github/agents/`。同名中央 discovery 文件不应在 `TriMetaverse/.github/agents/` 并行保留；中央只通过 manifest 和 registry closeout 工作流路由本模块 registry。
 
 ## Update Discipline
 
