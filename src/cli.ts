@@ -2,7 +2,8 @@
 /**
  * trimc CLI — cron 子命令（行为对标 trilc cron CLI：add/list/update/remove/run/log/status）。
  *
- * 服务地址默认 http://127.0.0.1:8710（TRIMC_URL 可覆盖）。
+ * 服务地址默认 http://127.0.0.1:8712（TRIMC_URL 可覆盖；2026-09-30 8710→8712+loopback
+ * 迁移窗随批——8710 公网面退役，loopback 端口正名 8712）。
  * `trimc cron add --plane-shift` 一键安装周平面迁移五段链 job（r1-1 方案 §5.1 模板）。
  */
 
@@ -16,7 +17,7 @@ import { resolveInternalToken } from './internal-token.js';
 // ── service address ─────────────────────────────────────────────
 
 function serviceUrl(): string {
-  return process.env.TRIMC_URL ?? 'http://127.0.0.1:8710';
+  return process.env.TRIMC_URL ?? 'http://127.0.0.1:8712';
 }
 
 // ── HTTP client ─────────────────────────────────────────────────

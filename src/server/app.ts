@@ -44,6 +44,19 @@ import {
   verifyPull,
 } from '../config/key-cache.js';
 import { resolveDefaultModelDetailed } from '../config-sync/default-model.js';
+import { timingSafeEqual } from 'node:crypto';
+
+/** 常数时间字符串比较（TriRLC app.ts:148 同构）：长度不等时不能直接短路
+ * （耗时差会泄漏长度信息），先做一次同长哑比较抹平时间特征，再返回 false。 */
+export function timingSafeStringEquals(a: string, b: string): boolean {
+  const ab = Buffer.from(a, 'utf-8');
+  const bb = Buffer.from(b, 'utf-8');
+  if (ab.length !== bb.length) {
+    timingSafeEqual(ab, ab);
+    return false;
+  }
+  return timingSafeEqual(ab, bb);
+}
 
 export function createTriMCApp(env: TriMCEnv) {
   const taskController = new TaskController();
@@ -135,18 +148,27 @@ export function createTriMCApp(env: TriMCEnv) {
           return;
         }
 
-        // ── 内部面鉴权（P0 加固 2026-08-25：8710 公网可达，/internal/* 原零鉴权
-        // 且 cron job 可执行任意 bash = 未认证 RCE 面）。TRIMC_INTERNAL_TOKEN
-        // 未配置时维持旧行为（兼容未迁移调用方），配置后强制校验。 ──
+        // ── 内部面鉴权（fail-closed 正形，2026-09-30 升约随 8712+loopback 迁移窗；
+        // cto-8710-token-gate-audit 修案表 #1/#3）。照 TriRLC/TriMLC 同族正形：
+        // TRIMC_INTERNAL_TOKEN 未配置=401 全拒（internal_auth_disabled），旧
+        // 「未配置即放行」兼容变体退役——cron job = spawn bash 任意命令通道
+        // （command-handler.ts:83-88），缺省必须全拒。token 于请求期读取（不缓存
+        // 启动快照，支持运行中注入）；恒时比较防时序侧信道。 ──
         const internalToken = process.env.TRIMC_INTERNAL_TOKEN ?? '';
-        if (internalToken && (req.url ?? '').startsWith('/internal/')) {
+        if ((req.url ?? '').startsWith('/internal/')) {
+          if (!internalToken) {
+            res.writeHead(401, { 'content-type': 'application/json' });
+            res.end(JSON.stringify({ error: 'internal_auth_disabled' }));
+            return;
+          }
           const h = req.headers;
           const supplied = Array.isArray(h['x-internal-token'])
             ? h['x-internal-token'][0]
             : (typeof h.authorization === 'string' && h.authorization.startsWith('Bearer ')
                 ? h.authorization.slice(7)
                 : h['x-internal-token']);
-          if (supplied !== internalToken) {
+          if (typeof supplied !== 'string'
+              || !timingSafeStringEquals(supplied, internalToken)) {
             res.writeHead(401, { 'content-type': 'application/json' });
             res.end(JSON.stringify({ error: 'unauthorized: missing or invalid X-Internal-Token' }));
             return;
@@ -746,9 +768,12 @@ export function createTriMCApp(env: TriMCEnv) {
         res.end(JSON.stringify({ error: 'not_found' }));
       });
 
+      // P0 加固配套（TriRMC app.ts:805 形态；2026-09-30 8712 迁移窗）：
+      // 默认仅绑定 loopback；显式 TRIMC_HOST 可覆盖。
+      const bindHost = process.env.TRIMC_HOST ?? '127.0.0.1';
       await new Promise<void>((resolve, reject) => {
         server!.on('error', reject);
-        server!.listen(env.port, () => resolve());
+        server!.listen(env.port, bindHost, () => resolve());
       });
 
       // Read the actual port (in case port 0 was used for OS-assigned port)
@@ -757,7 +782,7 @@ export function createTriMCApp(env: TriMCEnv) {
         env.port = addr.port;
       }
 
-      console.log(`[trimc] listening on :${env.port}`);
+      console.log(`[trimc] listening on ${bindHost}:${env.port}`);
 
       // ── LG-058 P1：TriModel 卡面 tier1 拉取接线（§4.3 梯；boot 非阻塞失败不拦启动）──
       // 形态对标 TriRLC app.ts start() Step 2b。TRIMC_TRIMODEL_API_URL 未设=
