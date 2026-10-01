@@ -74,9 +74,11 @@ describe('TriMMC /internal token auth gate', () => {
     assert.equal(health.status, 200);
   });
 
-  it('token 未配置：旧行为放行（兼容未迁移调用方）', async () => {
+  it('token 未配置：fail-closed 全拒 401（WO-C 校准：03fecb0 门升正形，legacy-allow 兼容变体已退役——app.ts:153 旧行为放行注释即退役记录）', async () => {
     delete process.env.TRIMC_INTERNAL_TOKEN;
     const res = await fetch(`${baseUrl}/internal/v1/config/sync/status`);
-    assert.equal(res.status, 200);
+    assert.equal(res.status, 401);
+    const body = await res.json() as { error: string };
+    assert.equal(body.error, 'internal_auth_disabled');
   });
 });

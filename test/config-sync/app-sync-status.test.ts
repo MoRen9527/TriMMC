@@ -23,6 +23,11 @@ describe('TriMMC app config-sync status assembly', () => {
   let baseUrl: string;
   const prevConfigDir = process.env.TRIMC_CONFIG_DIR;
   const prevFleetRoot = process.env.TRIMC_FLEET_ROOT;
+  const prevToken = process.env.TRIMC_INTERNAL_TOKEN;
+  // WO-C（03fecb0 fail-closed 正形）：/internal 面装配 token 走正道（happy path 面）
+  const TOKEN = 'test-token-sync-0123456789abcdef';
+  const authFetch = (url: string, init?: RequestInit) =>
+    fetch(url, { ...init, headers: { ...init?.headers, 'x-internal-token': TOKEN } });
 
   before(async () => {
     tmpConfigDir = await fs.mkdtemp(path.join(os.tmpdir(), 'trimc-app-sync-'));
@@ -33,6 +38,7 @@ describe('TriMMC app config-sync status assembly', () => {
     invalidateJobStoreCache();
     resetAppliedCacheForTest();
 
+    process.env.TRIMC_INTERNAL_TOKEN = TOKEN;
     const env: TriMMCEnv = { ...readEnv(), port: 0, cronEnabled: false };
     app = createTriMMCApp(env);
     await app.start();
@@ -49,10 +55,12 @@ describe('TriMMC app config-sync status assembly', () => {
     else process.env.TRIMC_CONFIG_DIR = prevConfigDir;
     if (prevFleetRoot === undefined) delete process.env.TRIMC_FLEET_ROOT;
     else process.env.TRIMC_FLEET_ROOT = prevFleetRoot;
+    if (prevToken === undefined) delete process.env.TRIMC_INTERNAL_TOKEN;
+    else process.env.TRIMC_INTERNAL_TOKEN = prevToken;
   });
 
   it('空态 status → 200 { ok:true, applied/fleetHead/dims/pending 全 null }', async () => {
-    const res = await fetch(`${baseUrl}/internal/v1/config/sync/status`);
+    const res = await authFetch(`${baseUrl}/internal/v1/config/sync/status`);
     assert.equal(res.status, 200);
     const body = await res.json() as { ok: boolean; applied: unknown; fleetHead: unknown; pending: unknown; warnings: unknown[] };
     assert.equal(body.ok, true);
@@ -95,7 +103,7 @@ describe('TriMMC app config-sync status assembly', () => {
       }),
       'utf-8',
     );
-    const res = await fetch(`${baseUrl}/internal/v1/config/sync/status`);
+    const res = await authFetch(`${baseUrl}/internal/v1/config/sync/status`);
     const body = await res.json() as { applied: { bundleId: string } | null; dims: Record<string, string> | null; pending: { bundleId: string } | null };
     assert.equal(body.applied?.bundleId, 'bundle-old');
     assert.equal(body.dims?.employees, 'warning');
@@ -103,7 +111,7 @@ describe('TriMMC app config-sync status assembly', () => {
   });
 
   it('非 GET 方法 → 404（路由仅 GET）', async () => {
-    const res = await fetch(`${baseUrl}/internal/v1/config/sync/status`, { method: 'POST' });
+    const res = await authFetch(`${baseUrl}/internal/v1/config/sync/status`, { method: 'POST' });
     assert.equal(res.status, 404);
   });
 });
