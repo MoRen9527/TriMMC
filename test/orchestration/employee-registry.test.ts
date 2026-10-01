@@ -197,17 +197,22 @@ describe('Employee Registry — loadEmployeeRegistry', () => {
 
 // ── r13-2 Step 4: 真实 source-agents 14 员工实载（registryDir 改指 v3 真源） ──
 
-describe('Employee Registry — source-agents v3 (14 employees)', () => {
+describe('Employee Registry — source-agents v3 (13 席真源)', () => {
   const SOURCE_AGENTS = resolve('..', 'TriCompany', 'source-agents');
 
-  it('loads 14 employees from the v3 contract source', () => {
+  it('loads 13 employees from the v3 contract source (WO-D 构成留痕)', () => {
     const result = loadEmployeeRegistry(SOURCE_AGENTS);
 
-    assert.strictEqual(result.employees.length, 14, `expected 14, got ${result.employees.length}`);
-    assert.strictEqual(result.errors.length, 0, `unexpected errors: ${result.errors.map((e) => e.path).join(', ')}`);
+    // 构成留痕（WO-D 实弹枚举 2026-10-01）：真源=13 员工席（TriCompany V1.0 13 席）。
+    // 目录 16 − board（治理席，v3.1 另册，非员工 roster 面）− business-strategy
+    // （跨切席，schema 分叉）− registries（registry 族）= 13。board/business-strategy
+    // 两案 loadErrors=合法排除非数据缺件（errors.length=2 为构成面断言）。
+    // 前提：agent-core dist ≥v3.1 支持（cso 契约 v3.1；dist 陈旧时 cso 被拒=12 假阴性）。
+    assert.strictEqual(result.employees.length, 13, `expected 13, got ${result.employees.length}`);
+    assert.strictEqual(result.errors.length, 2, `expected 2 legitimate exclusions, got ${result.errors.length}: ${result.errors.map((e) => e.path).join(', ')}`);
 
-    // 3 份缺口员工（r13-2 Step 2 新写）必须在列
-    for (const id of ['business-strategy', 'customer-success-officer', 'deployment-engineer']) {
+    // 缺口席在列校验（WO-D 校准：business-strategy 非员工面移出；cso 为本批治愈席补入）
+    for (const id of ['ceo-chief-of-staff', 'customer-success-officer', 'deployment-engineer']) {
       const emp = result.employees.find((e: EmployeeRecord) => e.employeeId === id);
       assert.ok(emp, `gap employee missing: ${id}`);
       assert.strictEqual(emp!.status.state, 'active', `${id} should be active`);
