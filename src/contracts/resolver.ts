@@ -47,7 +47,10 @@ function toDomain(c: AgentContractV3): AgentContract {
     },
     collaborators: c.collaborators,
     tools: projectTools(c.tools),
-    io_contract: c.io_contract,
+    // batch-15 件③追裁（CTO 2026-10-02）：v3 侧 io_contract 已 Registry nullish
+    //（board 治理席无 IO 契约设计形）——本域投影兜底空 IO 形，domain 类型 Required
+    // 不动（消费方零改动，空 inputs/outputs 语义=治理席无 IO 契约）。
+    io_contract: c.io_contract ?? { inputs: [], outputs: [] },
     instructions: c.instructions,
     // v3 对象形状（spec §2.4 裁决）；本域投影为对象，消费方暂无读取方
     runtime_baseline: c.runtime_baseline,

@@ -85,6 +85,11 @@ export function loadEmployeeRegistry(registryDir: string): LoadResult {
   const loadErrors: LoadResult['errors'] = [];
 
   for (const contract of contracts) {
+    // batch-15 件③追裁连带（CTO 2026-10-02）：agent-core Registry family 分支后
+    // board/business-strategy 两 Registry 席合法加载——员工 roster 面=Role 席 only，
+    // 显式 family 过滤（此前系 schema 拒绝「恰好排除」，Registry 合法化后该机制消解，
+    // 须显式维持 13 席 roster 纯度；Registry 席=合法排除，不进 errors 不进 employees）。
+    if (contract.identity.family !== 'Role') continue;
     try {
       const employee = contractToEmployee(contract);
       employees.push(employee);
