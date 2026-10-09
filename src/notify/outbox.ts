@@ -62,7 +62,7 @@ export const TARGET_SEAT_ROSTER: Record<string, { daemon: string }> = {
 };
 /** 源席白名单（LG-036 MVP=m-duty-cos；LG-052 扩治理链三席 bod/m-cos/m-coo——
  *  本单只扩通道能力，内容面治理口径不在本单）。 */
-export const SOURCE_SEAT_WHITELIST = ['m-duty-cos', 'bod', 'm-cos', 'm-coo'];
+export const SOURCE_SEAT_WHITELIST = ['m-duty-cos', 'bod', 'm-cos', 'm-coo', 'power-gate'];
 
 export const NOTIFY_FILE_ENV = 'TRIMC_NOTIFY_FILE';
 
