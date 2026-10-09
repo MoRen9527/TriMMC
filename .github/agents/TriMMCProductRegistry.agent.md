@@ -1,5 +1,5 @@
 ---
-name: TriMCProductRegistry
+name: TriMMCProductRegistry
 description: "适用场景：TriMMC 产品事实、服务域职责、当前进展、服务主控范围、observability 状态或 controller 产品问题。"
 tools: [read, search, edit]
 user-invocable: true

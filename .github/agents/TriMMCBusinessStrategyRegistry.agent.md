@@ -1,5 +1,5 @@
 ---
-name: TriMCBusinessStrategyRegistry
+name: TriMMCBusinessStrategyRegistry
 description: "适用场景：TriMMC 商业定位、统一运行面职责、服务域执行在当前商业模式中的作用、interaction core 边界、与 Tristaciss/TriRLC 的运行分工或中央收口中的模块商业事实。"
 tools: [read, search, edit]
 user-invocable: true

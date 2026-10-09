@@ -1,5 +1,5 @@
 ---
-name: TriMCCodeRegistry
+name: TriMMCCodeRegistry
 description: "适用场景：TriMMC 代码结构、controller 布局、observability 迁移状态、仓库健康、代码质量风险或 git 侧结构问题。"
 tools: [read, search, edit]
 user-invocable: true

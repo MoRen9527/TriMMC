@@ -1,6 +1,6 @@
 /**
  * internal-auth tests — P0 加固（2026-08-25）：/internal/* token 鉴权门。
- * 真实 createTriMCApp 装配；TRIMC_INTERNAL_TOKEN 动态切换验证四种形态。
+ * 真实 createTriMMCApp 装配；TRIMC_INTERNAL_TOKEN 动态切换验证四种形态。
  */
 
 import { describe, it, before, after } from 'node:test';
