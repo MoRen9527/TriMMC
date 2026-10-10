@@ -121,6 +121,14 @@ export function createCommandHandler(options: CommandHandlerOptions): CommandHan
       console.error(`[trimc:cron] job ${job.name} (${job.id}) failed: ${message.slice(0, 400)}`);
       throw new Error(message);
     }
+
+    // sgB 排窗修②（观测增强·不改判据）：空壳检出——exit 0 且双流全空＝空壳跑
+    // 形态（2026-10-02 bod-progress-report 空壳事件同签名），留痕候值席/维护面判读。
+    if (result.code === 0 && !result.out?.trim() && !result.err?.trim()) {
+      console.warn(
+        `[trimc:cron] empty-shell run: job ${job.name} (${job.id}) exit=0 with empty stdout/stderr — observation only`,
+      );
+    }
   };
 }
 
