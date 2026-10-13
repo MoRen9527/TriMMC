@@ -1,6 +1,6 @@
 // ── Cost Controller Unit Tests ──
 // 3-layer budget: company-daily, employee-daily, per-task
-// Source: TriMC/docs/engineering/employee-orchestration-design.md §5.4
+// Source: TriMMC/docs/engineering/employee-orchestration-design.md §5.4
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert';

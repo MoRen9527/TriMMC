@@ -1,6 +1,6 @@
 /**
  * internal-auth tests — P0 加固（2026-08-25）：/internal/* token 鉴权门。
- * 真实 createTriMCApp 装配；TRIMC_INTERNAL_TOKEN 动态切换验证四种形态。
+ * 真实 createTriMMCApp 装配；TRIMC_INTERNAL_TOKEN 动态切换验证四种形态。
  */
 
 import { describe, it, before, after } from 'node:test';
@@ -9,12 +9,12 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { overrideConfigDir, resetConfigDir, invalidateJobStoreCache } from '@tricompany/agent-core';
-import { createTriMCApp } from '../../src/server/app.js';
-import { readEnv, type TriMCEnv } from '../../src/config/env.js';
+import { createTriMMCApp } from '../../src/server/app.js';
+import { readEnv, type TriMMCEnv } from '../../src/config/env.js';
 
 const TOKEN = 'test-token-0123456789abcdef';
 
-describe('TriMC /internal token auth gate', () => {
+describe('TriMMC /internal token auth gate', () => {
   let app: { start(): Promise<void>; stop(): Promise<void>; port: number };
   let tmpConfigDir: string;
   let baseUrl: string;
@@ -26,8 +26,8 @@ describe('TriMC /internal token auth gate', () => {
     process.env.TRIMC_CONFIG_DIR = tmpConfigDir;
     overrideConfigDir(tmpConfigDir);
     invalidateJobStoreCache();
-    const env: TriMCEnv = { ...readEnv(), port: 0, cronEnabled: false };
-    app = createTriMCApp(env);
+    const env: TriMMCEnv = { ...readEnv(), port: 0, cronEnabled: false };
+    app = createTriMMCApp(env);
     await app.start();
     baseUrl = `http://127.0.0.1:${app.port}`;
   });
@@ -74,9 +74,11 @@ describe('TriMC /internal token auth gate', () => {
     assert.equal(health.status, 200);
   });
 
-  it('token 未配置：旧行为放行（兼容未迁移调用方）', async () => {
+  it('token 未配置：fail-closed 全拒 401（WO-C 校准：03fecb0 门升正形，legacy-allow 兼容变体已退役——app.ts:153 旧行为放行注释即退役记录）', async () => {
     delete process.env.TRIMC_INTERNAL_TOKEN;
     const res = await fetch(`${baseUrl}/internal/v1/config/sync/status`);
-    assert.equal(res.status, 200);
+    assert.equal(res.status, 401);
+    const body = await res.json() as { error: string };
+    assert.equal(body.error, 'internal_auth_disabled');
   });
 });

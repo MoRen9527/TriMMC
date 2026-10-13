@@ -1,5 +1,5 @@
 // ── Task Controller — Agent Loop Task Lifecycle Manager ──
-// TriMC v0.1.0: In-memory task CRUD with state machine enforcement.
+// TriMMC v0.1.0: In-memory task CRUD with state machine enforcement.
 
 export type TaskPriority = 'low' | 'normal' | 'high' | 'critical';
 export type TaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';

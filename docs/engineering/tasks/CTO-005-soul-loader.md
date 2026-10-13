@@ -5,7 +5,7 @@
 
 ## 背景
 
-TriMC v0.2.0 编排层四组件之二：**Soul Loader**（agent contract → 系统提示词）。将 AgentContract 六要素（Identity / Responsibilities / Decision Rights / Collaborators / Instructions / Tools）转换为结构化 Markdown 系统提示词，通过 `contractToContextSources()` 直接插入 Context Builder pipeline。
+TriMMC v0.2.0 编排层四组件之二：**Soul Loader**（agent contract → 系统提示词）。将 AgentContract 六要素（Identity / Responsibilities / Decision Rights / Collaborators / Instructions / Tools）转换为结构化 Markdown 系统提示词，通过 `contractToContextSources()` 直接插入 Context Builder pipeline。
 
 吸收自 Claude Code 的 `formatAgentLine()` 模式——每行是一个格式化条目，但不复制其 agent tool listing 目的。
 
@@ -80,7 +80,7 @@ node scripts/validate.mjs
 ## 影响分析
 
 - **编排层进度**: v0.2.0 四组件中 Context Builder + Soul Loader 两个完成
-- **后续集成**: TriMC HTTP server 可通过 `resolveContracts()` → `contractToContextSources()` → `agentLoop({context})` 启动员工 agent
+- **后续集成**: TriMMC HTTP server 可通过 `resolveContracts()` → `contractToContextSources()` → `agentLoop({context})` 启动员工 agent
 - **向后兼容**: 不传 context 时 agentLoop 行为不变
 
 ---

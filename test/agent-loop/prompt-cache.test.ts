@@ -1,4 +1,4 @@
-// ── TriMC Prompt Cache Tests ──
+// ── TriMMC Prompt Cache Tests ──
 // Phase 2 Tier 1: Cache annotation infrastructure unit tests.
 
 import { describe, it } from 'node:test';

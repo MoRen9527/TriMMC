@@ -10,7 +10,7 @@ Wire the four v0.2.0 orchestration components (Soul Loader, Memory Injector, Con
 
 - [x] `src/pipeline/assemble.ts` — Pipeline assembler module
 - [x] `src/server/app.ts` — Updated `/internal/v1/agent` with contract-based pipeline
-- [x] `src/config/env.ts` — Added `cwd` and `memdirPath` to TriMCEnv
+- [x] `src/config/env.ts` — Added `cwd` and `memdirPath` to TriMMCEnv
 - [x] `docs/registry/code-state.md` — Updated
 
 ## Architecture

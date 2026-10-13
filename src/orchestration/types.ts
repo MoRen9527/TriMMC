@@ -1,6 +1,6 @@
 // ── Employee Orchestration Layer Types ──
-// TriMC: Employee Registry, Capability Router, Scheduler, Cost Controller, Dispatch Proxy
-// Source: TriMC/docs/engineering/employee-orchestration-design.md §3
+// TriMMC: Employee Registry, Capability Router, Scheduler, Cost Controller, Dispatch Proxy
+// Source: TriMMC/docs/engineering/employee-orchestration-design.md §3
 
 import type { AgentContract } from '../contracts/agent-contract.js';
 

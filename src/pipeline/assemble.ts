@@ -1,4 +1,4 @@
-// ── TriMC Pipeline Assembler ──
+// ── TriMMC Pipeline Assembler ──
 // CTO-013: Production-grade orchestrator that wires the four v0.2.0
 // orchestration components into AgentLoopOptions.
 //

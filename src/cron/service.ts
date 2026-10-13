@@ -1,5 +1,5 @@
 /**
- * Cron Service — TriMC service-domain assembly over the shared agent-core scheduler.
+ * Cron Service — TriMMC service-domain assembly over the shared agent-core scheduler.
  *
  * Reuses @tricompany/agent-core JobExecutor + job-store (cron loop, JSON
  * persistence, atomic writes). This adapter adds what the shared core
@@ -9,7 +9,7 @@
  *   - degraded aggregation: consecutiveFailures = max over jobs
  *   - execution-log listing from per-run log files (no DB in the adapter)
  *
- * Behavioral baseline: TriLC src/cron (runJob force semantics, timeout,
+ * Behavioral baseline: TriRLC src/cron (runJob force semantics, timeout,
  * degraded threshold), NOT a code transplant (parity V1.1 §1).
  */
 
@@ -31,12 +31,12 @@ import {
 } from '@tricompany/agent-core';
 import { createCommandHandler, type CommandHandlerOptions } from './command-handler.js';
 
-/** Aligned with TriLC CONSECUTIVE_FAILURE_DEGRADED_THRESHOLD. */
+/** Aligned with TriRLC CONSECUTIVE_FAILURE_DEGRADED_THRESHOLD. */
 const DEGRADED_THRESHOLD = 3;
 
 export type CronLogStatus = 'ok' | 'error' | 'timeout';
 
-/** Execution log entry, aligned with TriLC ExecutionLogEntry shape. */
+/** Execution log entry, aligned with TriRLC ExecutionLogEntry shape. */
 export interface CronLogEntry {
   jobId: string;
   status: CronLogStatus;
@@ -166,7 +166,7 @@ export function createCronService(options: CronServiceOptions): CronService {
     },
 
     /**
-     * Manual/forced run — semantics aligned with TriLC runJobNow:
+     * Manual/forced run — semantics aligned with TriRLC runJobNow:
      * force overrides the disabled guard only; a running job is always
      * refused (single-instance guard for the migration window).
      */

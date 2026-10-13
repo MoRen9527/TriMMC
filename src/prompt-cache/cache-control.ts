@@ -1,4 +1,4 @@
-// ── TriMC Prompt Cache Control ──
+// ── TriMMC Prompt Cache Control ──
 // Phase 2 Tier 1: Cache annotation infrastructure absorbed from Claude Code 2.1.88.
 //
 // DeepSeek uses automatic prefix caching — no Anthropic cache_control markers needed.

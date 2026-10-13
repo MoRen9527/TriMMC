@@ -2,18 +2,22 @@
 /**
  * trimc CLI — cron 子命令（行为对标 trilc cron CLI：add/list/update/remove/run/log/status）。
  *
- * 服务地址默认 http://127.0.0.1:8710（TRIMC_URL 可覆盖）。
+ * 服务地址默认 http://127.0.0.1:8712（TRIMC_URL 可覆盖；2026-09-30 8710→8712+loopback
+ * 迁移窗随批——8710 公网面退役，loopback 端口正名 8712）。
  * `trimc cron add --plane-shift` 一键安装周平面迁移五段链 job（r1-1 方案 §5.1 模板）。
  */
 
 import type { CronJobPatch } from '@tricompany/agent-core';
+// TASK-TRIMODEL-RECOVERY-LADDER-01 波③：TriModel 直连恢复梯命令族（core=TriCode trimodel-cli，
+// 本 bin 只做 CoreIO 注入+runCli 派发——core 零仓感知，仓特有项在此注入）。
+import { defaultL2FlagPath, makeCoreIO, runCli, type ProbeReading } from '@trimetaverse/tricode/trimodel-cli';
 import { runConfigSyncApply } from './config-sync/apply.js';
 import { resolveInternalToken } from './internal-token.js';
 
 // ── service address ─────────────────────────────────────────────
 
 function serviceUrl(): string {
-  return process.env.TRIMC_URL ?? 'http://127.0.0.1:8710';
+  return process.env.TRIMC_URL ?? 'http://127.0.0.1:8712';
 }
 
 // ── HTTP client ─────────────────────────────────────────────────
@@ -71,7 +75,7 @@ const PLANE_SHIFT_PRESET = {
       '&& cd /srv/fleet/TriMetaverse \\',
       '&& git add docs/workflow/operating-records \\',
       '&& (git diff --cached --quiet || git -c user.name="TriMC Scheduler" -c user.email="trimc@tri.company" \\',
-      '     commit -m "ops: weekly plane shift {fromWeek}->{toWeek} (TriMC scheduler)") \\',
+      '     commit -m "ops: weekly plane shift {fromWeek}->{toWeek} (TriMMC scheduler)") \\',
       // 夜航01 任务1③（2026-09-14）：push 被拒（非快进）→再拉取→merge 归账→重推。
       // 台账锚：lg033-pool-sync-runbook §2.4（双向冲突 merge-only，禁跨 hub rebase 已推提交）。
       // merge 冲突则整链非零失败暴露→人工裁决线；不 force。
@@ -406,9 +410,138 @@ async function cmdConfigSyncApply(args: Args): Promise<void> {
   }
 }
 
+// ── TriModel 直连恢复梯命令族（波③ 范围②④）────────────────────
+
+/** 旧 bin 名调用识别（argv[1] basename 词干；覆盖 POSIX symlink 与直调命名面）。
+ * 已知限制（技术债如实标记）：Windows npm .cmd/.ps1 shim 的 argv[1]=真实 cli.js 路径，
+ * 调名不达子进程——该面弃用提示候 M3 删旧键窗随文档收口，不静默不假装。 */
+function legacyBinInvocation(oldName: string): boolean {
+  const raw = process.argv[1] ?? '';
+  const stem = (raw.split(/[\\/]/).pop() ?? '').toLowerCase().replace(/\.(cmd|ps1|exe|js|cjs|mjs)$/, '');
+  return stem === oldName;
+}
+
+/** cron engine 探活回调（core status 实时探活用；回调型注入=core 零端点知识）。
+ * 读数面=本机 trimc 服务 /internal/v1/cron/status 值面（可达+ok 即 up）。 */
+function cronEngineProbe(): { name: string; probe: () => Promise<ProbeReading> } {
+  return {
+    name: 'cron-engine',
+    probe: async () => {
+      try {
+        const token = resolveInternalToken();
+        const res = await fetch(`${serviceUrl()}/internal/v1/cron/status`, {
+          headers: token ? { 'X-Internal-Token': token } : {},
+        });
+        return { up: res.ok, detail: res.ok ? 'cron/status 200' : `HTTP ${res.status}` };
+      } catch (err) {
+        return { up: false, detail: err instanceof Error ? err.message : String(err) };
+      }
+    },
+  };
+}
+
+/** `model` 父命令：TriCode core runCli 派发（cron/config-sync 家族命令零触碰；退出码直通）。
+ * CoreIO 注入：who=审计身份（门⑤ 落行）、machine=四象限路由键（joint-plan 问3 21:44 勘正版：
+ * trimmc=sg Linux·M 服务域）、probes=cron engine 值面。 */
+async function runModelCommand(restArgs: string[]): Promise<void> {
+  const io = makeCoreIO({
+    who: 'trimmc-cmd',
+    binName: 'trimmc',
+    machine: 'sg-m',
+    probes: [cronEngineProbe()],
+    l2FlagPath: defaultL2FlagPath(),
+  });
+  process.exitCode = await runCli(restArgs, io);
+}
+
+// ── LG-058 P1 config 卡面命令族（daemon 进程内执行；CLI=触发器）──
+// 形态对标 TriRLC/TriMLC config 家族（N4）；HTTP 复用既有 cronRequest（已带
+// X-Internal-Token 三链解析：env→docker/.env→cwd 探测链，internal-token.ts）。
+// 梯语义=§4.3 层级合并裁：env 逃生门 > 卡面 cache（fresh/stale-grace）>
+// fleet bundle > 常量兜底——「即时生效」要求刷新与 env apply 落 daemon 运行态。
+
+function ts(n: unknown): string {
+  return typeof n === 'number' && n > 0 ? new Date(n).toISOString() : '-';
+}
+
+async function cmdConfig(args: string[]): Promise<void> {
+  const sub = args[0] ?? 'show';
+  try {
+    switch (sub) {
+      case 'pull': {
+        const r = await cronRequest('POST', '/internal/v1/config/pull') as {
+          ok?: boolean; mode?: string; defaultModel?: string | null; source?: string;
+          message?: string; attribution?: string | null;
+        };
+        console.log(`config pull: ${r.ok ? 'OK' : 'FAILED'} (mode=${r.mode})`);
+        console.log(`  default model: ${r.defaultModel ?? '-'}   source: ${r.source}`);
+        console.log(`  ${r.message ?? ''}`);
+        if (r.attribution) console.log(`  attribution: ${r.attribution}`);
+        if (!r.ok) process.exitCode = 1;
+        break;
+      }
+      case 'show':
+      case 'cache': {
+        if (sub === 'cache' && args[1] === 'clear') {
+          const r = await cronRequest('DELETE', '/internal/v1/config/cache') as {
+            hadCache?: boolean; removedFiles?: string[];
+          };
+          console.log(`config cache clear: done (hadCache=${!!r.hadCache}, removed=${(r.removedFiles ?? []).length} file(s))`);
+          console.log('  梯语义验证：接 `config pull` 强制回 tier1；daemon env 现值待下次成功 pull 覆盖');
+          break;
+        }
+        const r = await cronRequest('GET', '/internal/v1/config/show') as {
+          face?: string; hasCache?: boolean; fresh?: boolean; staleGrace?: boolean;
+          defaultModel?: string | null; effectiveModel?: string | null; effectiveSource?: string;
+          fetchedAt?: number | null; expiresAt?: number | null; refreshIntervalS?: number | null;
+          providerCount?: number; providers?: string[];
+          lastFetchAt?: number | null; lastFetchError?: string | null; lastAttribution?: string | null;
+          ladder?: { model?: string; source?: string } | null;
+        };
+        console.log(`config show (face=${r.face}):`);
+        console.log(`  effective model: ${r.effectiveModel ?? '-'}   source: ${r.effectiveSource}`);
+        if (r.hasCache) {
+          console.log(`  cache: ${r.fresh ? 'fresh' : r.staleGrace ? 'stale-grace (tier2.5)' : 'expired'}  fetched ${ts(r.fetchedAt)}  expires ${ts(r.expiresAt)}  refresh=${r.refreshIntervalS ?? '-'}s`);
+          console.log(`  providers(${r.providerCount}): ${(r.providers ?? []).join(', ') || '-'}`);
+        } else {
+          console.log('  cache: none (bundle/env 梯语义)');
+        }
+        if (r.ladder) {
+          console.log(`  ladder(§4.3): model=${r.ladder.model ?? '-'}  source=${r.ladder.source ?? '-'}  (env 逃生门 > 卡面 > fleet bundle > 常量)`);
+        }
+        console.log(`  last fetch: ${ts(r.lastFetchAt)}${r.lastFetchError ? `  error: ${r.lastFetchError}` : ''}${r.lastAttribution ? `  attribution: ${r.lastAttribution}` : ''}`);
+        break;
+      }
+      case 'verify': {
+        const r = await cronRequest('POST', '/internal/v1/config/verify') as {
+          ok?: boolean; connectivity?: string; credentials?: string; decryptHealth?: string;
+          cardPresent?: boolean; defaultModel?: string | null; providers?: number; message?: string;
+        };
+        console.log(`config verify: ${r.ok ? 'HEALTHY' : 'UNHEALTHY'}`);
+        console.log(`  connectivity: ${r.connectivity}   credentials: ${r.credentials}   decrypt: ${r.decryptHealth}`);
+        console.log(`  card_present: ${r.cardPresent}   default model: ${r.defaultModel ?? '-'}   providers: ${r.providers ?? 0}`);
+        console.log(`  ${r.message ?? ''}`);
+        if (!r.ok) process.exitCode = 1;
+        break;
+      }
+      default:
+        console.error(`ERROR: unknown config subcommand '${sub}'. Usage: trimmc config <pull|show|verify|cache [clear]>`);
+        process.exitCode = 1;
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/fetch failed|ECONNREFUSED/i.test(msg)) {
+      console.error(`ERROR: daemon 无响应（${serviceUrl()}）——先起 trimmc daemon 再试`);
+    } else {
+      console.error(`ERROR: ${msg}`);
+    }
+    process.exitCode = 1;
+  }
+}
+
 // ── dispatch ────────────────────────────────────────────────────
 
-const USAGE = `Usage: trimc <cron|config-sync> ...
+const USAGE = `Usage: trimmc <cron|config-sync|config|model> ...
 
   cron add    --name <n> --cron "<expr>" [--tz <tz>] --command <cmd> --cwd <dir>
               [--run-as <user>] [--timeout <ms>] [--disabled]
@@ -417,16 +550,32 @@ const USAGE = `Usage: trimc <cron|config-sync> ...
   cron <list|run <id>|log|status|update <id>|remove <id>>
 
   config-sync apply [--fleet-root <dir>] [--config-dir <dir>]
-                                        (apply the fleet five-dim sync bundle)`;
+                                        (apply the fleet five-dim sync bundle)
+
+  config <pull|show|verify|cache [clear]>  (TriModel 卡面配置族 LG-058；梯=§4.3)
+
+  model <restore-direct|config|status>   (TriModel 兜底直连恢复梯命令族；无参=help)`;
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
+  // 正名过渡期（范围④）：旧名调用→单行弃用引导（stderr，不阻塞），随后照常执行。
+  if (legacyBinInvocation('trimc')) {
+    console.error('[trimc] 提示：命令已正名为 trimmc（trimc=过渡期别名，M3 版本移除）；本次照常执行。');
+  }
   if (argv.length === 0) {
     console.log(USAGE);
     return;
   }
+  if (argv[0] === 'model') {
+    await runModelCommand(argv.slice(1));
+    return;
+  }
   if (argv[0] === 'cron' && argv.length === 1) {
     console.log(USAGE);
+    return;
+  }
+  if (argv[0] === 'config') {
+    await cmdConfig(argv.slice(1));
     return;
   }
   if (argv[0] === 'config-sync') {

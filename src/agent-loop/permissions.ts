@@ -1,10 +1,10 @@
-// ── TriMC Tool Permission System ──
+// ── TriMMC Tool Permission System ──
 // CTO-008-C Phase C2: Re-exports from @tricompany/agent-core shared truth,
-// plus TriMC-specific additions (TIER_DESCRIPTIONS, backward-compatible helpers).
+// plus TriMMC-specific additions (TIER_DESCRIPTIONS, backward-compatible helpers).
 // agent-core uses a level-based permission model:
 //   coordinator=0 < subagent=1 < main=2
 //   Subagent = read-only by default (read_file, glob_search, list_directory, search_code).
-//   This replaces TriMC's old Set-based model.
+//   This replaces TriMMC's old Set-based model.
 
 import {
   type AgentTier,
@@ -25,7 +25,7 @@ export {
 // agent-core's getTierSummary(tier) → string — alias to avoid conflict
 export { getTierSummary as getTierSummaryForTier } from '@tricompany/agent-core';
 
-// ── TriMC-specific additions ──
+// ── TriMMC-specific additions ──
 
 /** Human-readable tier descriptions for debugging/logging/context-building. */
 export const TIER_DESCRIPTIONS: Record<AgentTier, string> = {
@@ -52,7 +52,7 @@ export function getToolNamesForTier(tier: AgentTier): Set<string> {
 
 /**
  * Debug utility: count available tools per tier with tool names.
- * Backward-compatible with TriMC's original getTierSummary() — no arguments,
+ * Backward-compatible with TriMMC's original getTierSummary() — no arguments,
  * returns tool name lists (used by context-builder for system prompt injection).
  */
 export function getTierSummary(): Record<AgentTier, { count: number; tools: string[] }> {

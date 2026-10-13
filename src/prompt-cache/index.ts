@@ -1,4 +1,4 @@
-// ── TriMC Prompt Cache Module ──
+// ── TriMMC Prompt Cache Module ──
 // Phase 2 Tier 1: Cache annotation infrastructure.
 //
 // Exports:

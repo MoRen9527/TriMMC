@@ -1,5 +1,5 @@
 // ── PermissionEngine ──
-// CTO-003 P4T1: Public API for the TriMC tool permission system.
+// CTO-003 P4T1: Public API for the TriMMC tool permission system.
 // Wraps rule parsing, safety checks, and the 8-step decision pipeline
 // into a single PermissionEngine class.
 //

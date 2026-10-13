@@ -1,4 +1,4 @@
-// ── TriMC Soul Loader Tests ──
+// ── TriMMC Soul Loader Tests ──
 // CTO-005: Tests for contractToPrompt() and contractToContextSources().
 // Validates that AgentContract six-element Schema v1 converts to structured Markdown prompts.
 
@@ -45,7 +45,7 @@ const FULL_CTO_CONTRACT: AgentContract = {
     outputs: [{ type: 'technical_decision', description: 'APPROVE/FREEZE/ESCALATE' }],
   },
   instructions: 'Always prefer reading before writing. Never skip validation.',
-  runtime_baseline: [{ name: 'TriMC', description: 'Agent runtime' }],
+  runtime_baseline: [{ name: 'TriMMC', description: 'Agent runtime' }],
 };
 
 const MINIMAL_CONTRACT: AgentContract = {

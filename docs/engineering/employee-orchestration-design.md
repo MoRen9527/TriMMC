@@ -1,29 +1,29 @@
-# TriMC 员工编排层技术方案 V1.0
+# TriMMC 员工编排层技术方案 V1.0
 
 **Author**: CTO 小狄
 **Date**: 2026-07-14
 **Status**: 初版（待与 CPO 对齐产品范围）
 **Reference**: CTO-002 (W29, due 2026-07-17)
-**Dependencies**: TriMC Phase 1 & 2（55 tests ✅）、Contract Resolver v0.2.0（17 tests ✅）
+**Dependencies**: TriMMC Phase 1 & 2（55 tests ✅）、Contract Resolver v0.2.0（17 tests ✅）
 
 ---
 
 ## 1. 设计目标
 
-在 TriMC 已有 agent-loop + contract resolver 基础上，补齐**员工编排层（Employee Orchestration Layer）**的架构设计。编排层负责：
+在 TriMMC 已有 agent-loop + contract resolver 基础上，补齐**员工编排层（Employee Orchestration Layer）**的架构设计。编排层负责：
 
 1. **角色调度**：把任务按岗位契约分派给正确的 AI 员工
 2. **能力路由**：根据员工技能清单、IO 契约和当前负载做路由决策
 3. **成本控制**：按员工/任务等级做 token 预算、模型分层和速率限制
 
-本方案不替代 TriMC DESIGN.md 中已有的六层架构，而是在第 3 层（Orchestration Engine Layer）和第 2 层（Agent Runtime Layer）之间补充一个**员工编排子层**，充当 Coordinator 和员工实例之间的桥接。
+本方案不替代 TriMMC DESIGN.md 中已有的六层架构，而是在第 3 层（Orchestration Engine Layer）和第 2 层（Agent Runtime Layer）之间补充一个**员工编排子层**，充当 Coordinator 和员工实例之间的桥接。
 
 ---
 
 ## 2. 架构定位
 
 ```
-TriMC 六层架构（现有）              员工编排子层（新增）
+TriMMC 六层架构（现有）              员工编排子层（新增）
 
 ┌──────────────────────────┐
 │  Gateway / Entry Layer   │
@@ -93,7 +93,7 @@ interface EmployeeCostProfile {
 
 **实现路径**：
 - Phase 1（本方案）：`EmployeeRegistry` 从文件系统加载所有已知 `.contract.yaml`，配上静态 `costProfile`
-- Phase 2（后续）：从 TriMC 运行时状态实时更新 `currentLoad`、`status`
+- Phase 2（后续）：从 TriMMC 运行时状态实时更新 `currentLoad`、`status`
 
 ---
 
@@ -189,7 +189,7 @@ interface RoutingDecision {
 **三层预算体系**：
 
 ```
-Layer 1: 公司级（TriMC 全局）
+Layer 1: 公司级（TriMMC 全局）
   daily_budget:  USD 50（MVP 阶段硬上限）
   monthly_budget: USD 500
   overage_policy: 'freeze_except_p0'  ← 超支后只允许 P0 任务
@@ -363,7 +363,7 @@ REVIEW            →  调度 Review worker（CPO agent）
 
 **文件结构**：
 ```
-TriMC/src/orchestration/
+TriMMC/src/orchestration/
   employee-registry.ts
   capability-router.ts
   employee-scheduler.ts
@@ -398,7 +398,7 @@ TriMC/src/orchestration/
 | EmployeeScheduler | 单元 | 状态机转换 + 并发上限 + escalation chain |
 | CostController | 单元 | 预算边界值（刚好用完/超额/日重置）|
 | DispatchProxy | 集成 | 串联全链路，mock 下层但验证端到端 |
-| E2E | 集成 | TriMC server + 真实 contract + agent loop task dispatch |
+| E2E | 集成 | TriMMC server + 真实 contract + agent loop task dispatch |
 
 ---
 
@@ -407,7 +407,7 @@ TriMC/src/orchestration/
 | 决策点 | 选择 | 理由 |
 |---|---|---|
 | Registry 存哪 | 内存 + 文件系统重载 | 当前无持久化 DB，Phase A 不引入新依赖 |
-| 并发模型 | 单进程 Node.js 事件循环 | 与 TriMC 一致，不引入 worker_threads |
+| 并发模型 | 单进程 Node.js 事件循环 | 与 TriMMC 一致，不引入 worker_threads |
 | 升级链上限 | 最多 3 级（员工→上级→CEO） | 防止无限升级循环 |
 | 成本超支策略 | `freeze_except_p0` | 安全优先，保留关键路径 |
 | Contract 热重载 | Phase C | Phase A 用启动时一次性加载 |
@@ -441,10 +441,10 @@ TriMC/src/orchestration/
 
 ## 10. 使用依据
 
-- `TriMC/docs/engineering/DESIGN.md` §2 六层架构、§3 Coordinator 模式、§6 多 Agent 隔离
-- `TriMC/docs/engineering/phase-1-execution-note.md` — Phase 1&2 交付物列表
-- `TriMC/src/contracts/resolver.ts` — Contract Resolver v0.2.0 API
-- `TriMC/src/agent-loop/loop.ts` — agentLoop() API（AsyncGenerator + 8 事件类型）
-- `TriMC/src/task-controller/controller.ts` — 当前占位，将被本方案替代
+- `TriMMC/docs/engineering/DESIGN.md` §2 六层架构、§3 Coordinator 模式、§6 多 Agent 隔离
+- `TriMMC/docs/engineering/phase-1-execution-note.md` — Phase 1&2 交付物列表
+- `TriMMC/src/contracts/resolver.ts` — Contract Resolver v0.2.0 API
+- `TriMMC/src/agent-loop/loop.ts` — agentLoop() API（AsyncGenerator + 8 事件类型）
+- `TriMMC/src/task-controller/controller.ts` — 当前占位，将被本方案替代
 - `TriCompany/docs/engineering/DESIGN.md` §2.2.1 元认知混合结构
 - `TriCompany/.github/source-agents/test-engineer/` — TestEngineer 五件套（唯一完整的员工 contract）

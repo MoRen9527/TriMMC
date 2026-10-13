@@ -1,6 +1,6 @@
 // ── Employee Scheduler Unit Tests ──
 // 5-state machine, concurrency, timeouts
-// Source: TriMC/docs/engineering/employee-orchestration-design.md §5.3
+// Source: TriMMC/docs/engineering/employee-orchestration-design.md §5.3
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert';

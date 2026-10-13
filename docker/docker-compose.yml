@@ -1,11 +1,11 @@
-# TriMC 最小部署拓扑 — docker-compose
+# TriMMC 最小部署拓扑 — docker-compose
 # CARRY-004 | 最后更新：2026-07-14
 #
 # 启动前准备：
 #   1. 复制 .env.example 为 .env 并填入 DEEPSEEK_API_KEY
 #   2. 从父目录构建镜像：
-#      docker build -f TriMC/docker/Dockerfile -t trimc:dev ../..
-#   3. docker-compose -f TriMC/docker/docker-compose.yml up -d
+#      docker build -f TriMMC/docker/Dockerfile -t trimc:dev ../..
+#   3. docker-compose -f TriMMC/docker/docker-compose.yml up -d
 #
 # 验证：
 #   curl http://localhost:8710/healthz
@@ -17,7 +17,7 @@ services:
     ports:
       - "${TRIMC_PORT:-8710}:${TRIMC_PORT:-8710}"
     environment:
-      # TriMC 层
+      # TriMMC 层
       - TRIMC_PORT=${TRIMC_PORT:-8710}
       - TRISTACISS_BASE_URL=${TRISTACISS_BASE_URL:-http://127.0.0.1:8008}
       - OPENCLOW_GATEWAY_URL=${OPENCLOW_GATEWAY_URL:-ws://127.0.0.1:8822}

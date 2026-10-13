@@ -1,6 +1,6 @@
 // ── Capability Router Unit Tests ──
 // 3-tier matching: IO hard → authority soft → load tuning
-// Source: TriMC/docs/engineering/employee-orchestration-design.md §5.2
+// Source: TriMMC/docs/engineering/employee-orchestration-design.md §5.2
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert';

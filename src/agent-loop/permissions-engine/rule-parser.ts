@@ -7,7 +7,7 @@ import type { PermissionRule, RuleSource } from './types.js';
 
 // ── Legacy Name Aliases ──
 
-/** Claude Code → TriMC tool name aliases for backward compatibility. */
+/** Claude Code → TriMMC tool name aliases for backward compatibility. */
 const LEGACY_ALIASES: Record<string, string> = {
   Task: 'task',
   KillShell: 'task', // no TaskStop equivalent — fold into task
@@ -125,7 +125,7 @@ function unescapeContent(content: string): string {
     .replace(/\\\\/g, '\\');
 }
 
-/** Resolve legacy Claude Code tool name to TriMC tool name. */
+/** Resolve legacy Claude Code tool name to TriMMC tool name. */
 function resolveAlias(name: string): string {
   return LEGACY_ALIASES[name] ?? name;
 }

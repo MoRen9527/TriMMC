@@ -1,5 +1,5 @@
 // ── Sub-Agent Tools Resolution ──
-// P3T1: Maps Claude Code tool declarations to TriMC tool names + applies agent filtering.
+// P3T1: Maps Claude Code tool declarations to TriMMC tool names + applies agent filtering.
 // Absorbed from Claude Code's resolveAgentTools / filterToolsForAgent.
 
 import { getToolDefinitions } from '../tools.js';
@@ -10,7 +10,7 @@ import { CLAUDE_TOOL_MAP } from './built-in.js';
 // ── Tools Resolution ──
 
 /**
- * Resolve an agent definition's tool declarations into actual TriMC ToolDefinitions.
+ * Resolve an agent definition's tool declarations into actual TriMMC ToolDefinitions.
  *
  * Claude Code tool names are mapped:
  *   Read → read_file, Bash → shell_exec, Glob → glob_search, Write → write_file, Edit → edit_file, Task → task
@@ -22,7 +22,7 @@ import { CLAUDE_TOOL_MAP } from './built-in.js';
  * '*' in the tools array means all subagent-tier tools.
  *
  * @param agentDef - The agent definition with Claude Code tool declarations
- * @returns Resolved TriMC ToolDefinition list
+ * @returns Resolved TriMMC ToolDefinition list
  */
 export function resolveAgentTools(agentDef: AgentDefinition): ToolDefinition[] {
   // All tools available at subagent tier
@@ -32,16 +32,16 @@ export function resolveAgentTools(agentDef: AgentDefinition): ToolDefinition[] {
   if (agentDef.tools.includes('*')) {
     // Apply disallowed tools filter
     if (agentDef.disallowedTools && agentDef.disallowedTools.length > 0) {
-      const disallowedTriMCNames = agentDef.disallowedTools
+      const disallowedTriMMCNames = agentDef.disallowedTools
         .map(ccName => resolveClaudeToolName(ccName))
         .filter((n): n is string => n !== null);
 
-      return subagentTools.filter(t => !disallowedTriMCNames.includes(t.function.name));
+      return subagentTools.filter(t => !disallowedTriMMCNames.includes(t.function.name));
     }
     return subagentTools;
   }
 
-  // Resolve each Claude Code tool name to TriMC name
+  // Resolve each Claude Code tool name to TriMMC name
   const resolvedNames = new Set<string>();
   for (const ccTool of agentDef.tools) {
     const triMCName = resolveClaudeToolName(ccTool);
@@ -58,11 +58,11 @@ export function resolveAgentTools(agentDef: AgentDefinition): ToolDefinition[] {
 }
 
 /**
- * Resolve a single Claude Code tool declaration to a TriMC tool name.
+ * Resolve a single Claude Code tool declaration to a TriMMC tool name.
  * Strips sub-command syntax like "Bash(git:*)" → "shell_exec".
  *
  * @param ccDeclaration - Claude Code tool declaration (e.g., "Read", "Bash(git:*)" )
- * @returns TriMC tool name or null if unrecognized
+ * @returns TriMMC tool name or null if unrecognized
  */
 function resolveClaudeToolName(ccDeclaration: string): string | null {
   // Strip sub-command syntax: "Bash(git:*)" → "Bash"
@@ -73,7 +73,7 @@ function resolveClaudeToolName(ccDeclaration: string): string | null {
     return CLAUDE_TOOL_MAP[baseName];
   }
 
-  // Check if it's already a TriMC name
+  // Check if it's already a TriMMC name
   const triMCNames = ['read_file', 'write_file', 'edit_file', 'shell_exec', 'glob_search', 'task'];
   if (triMCNames.includes(baseName)) {
     return baseName;
@@ -105,13 +105,13 @@ export function filterToolsForAgent(
     return tools;
   }
 
-  const disallowedTriMCNames = agentDef.disallowedTools
+  const disallowedTriMMCNames = agentDef.disallowedTools
     .map(ccName => resolveClaudeToolName(ccName))
     .filter((n): n is string => n !== null);
 
-  if (disallowedTriMCNames.length === 0) return tools;
+  if (disallowedTriMMCNames.length === 0) return tools;
 
-  return tools.filter(t => !disallowedTriMCNames.includes(t.function.name));
+  return tools.filter(t => !disallowedTriMMCNames.includes(t.function.name));
 }
 
 /**

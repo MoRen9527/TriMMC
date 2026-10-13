@@ -1,4 +1,4 @@
-export type TriMCEnv = {
+export type TriMMCEnv = {
   port: number;
   tristacissBaseUrl: string;
   openclawGatewayUrl: string;
@@ -20,7 +20,7 @@ export type TriMCEnv = {
   defaultModel?: string;
 };
 
-export function readEnv(): TriMCEnv {
+export function readEnv(): TriMMCEnv {
   return {
     port: Number(process.env.TRIMC_PORT ?? 8710),
     tristacissBaseUrl: process.env.TRISTACISS_BASE_URL ?? 'http://127.0.0.1:8008',

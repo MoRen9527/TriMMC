@@ -1,8 +1,8 @@
-// ── TriMC Conflict Arbitration ──
-// Detects and resolves conflicts when TriLC nodes replay offline events.
+// ── TriMMC Conflict Arbitration ──
+// Detects and resolves conflicts when TriRLC nodes replay offline events.
 // CTO-008-M §3.3.3: winner-takes-last, apply-offline-changes, already_executed.
 //
-// Architecture constraint (MVP): TriMC does not yet have a shared task-state store.
+// Architecture constraint (MVP): TriMMC does not yet have a shared task-state store.
 // Until a proper task DB arrives, conflict detection operates on a simple in-memory
 // tracking map keyed by event type + payload identity.
 
@@ -44,7 +44,7 @@ const executedToolCalls = new Set<string>();       // idempotencyKey
 const nodeStateVersions = new Map<string, number>(); // nodeId → version
 
 /**
- * Detect conflicts in a batch of replay events against TriMC-side state.
+ * Detect conflicts in a batch of replay events against TriMMC-side state.
  *
  * Current MVP behavior:
  * - `agent_run` events: always accepted (no conflict detection for now)
@@ -143,14 +143,14 @@ function detectConflict(nodeId: string, event: ReplayEvent): ConflictItem | null
 }
 
 /**
- * Track a task assignment on the server side (called when TriMC assigns a task).
+ * Track a task assignment on the server side (called when TriMMC assigns a task).
  */
 export function trackTaskAssignment(taskId: string, nodeId: string): void {
   taskAssignments.set(taskId, nodeId);
 }
 
 /**
- * Track an executed tool call (called when TriMC executes a tool).
+ * Track an executed tool call (called when TriMMC executes a tool).
  */
 export function trackToolExecution(idempotencyKey: string): void {
   executedToolCalls.add(idempotencyKey);

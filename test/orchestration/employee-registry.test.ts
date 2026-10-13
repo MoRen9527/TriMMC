@@ -1,6 +1,6 @@
 // ── Employee Registry Unit Tests ──
 // Phase A: static contract loading, EmployeeRecord construction
-// Source: TriMC/docs/engineering/employee-orchestration-design.md §5.1
+// Source: TriMMC/docs/engineering/employee-orchestration-design.md §5.1
 
 import { describe, it, after } from 'node:test';
 import assert from 'node:assert';
@@ -197,17 +197,31 @@ describe('Employee Registry — loadEmployeeRegistry', () => {
 
 // ── r13-2 Step 4: 真实 source-agents 14 员工实载（registryDir 改指 v3 真源） ──
 
-describe('Employee Registry — source-agents v3 (14 employees)', () => {
+describe('Employee Registry — source-agents v3 (13 席真源)', () => {
   const SOURCE_AGENTS = resolve('..', 'TriCompany', 'source-agents');
 
-  it('loads 14 employees from the v3 contract source', () => {
+  it('loads 13 employees from the v3 contract source (WO-D 构成留痕)', () => {
     const result = loadEmployeeRegistry(SOURCE_AGENTS);
 
-    assert.strictEqual(result.employees.length, 14, `expected 14, got ${result.employees.length}`);
-    assert.strictEqual(result.errors.length, 0, `unexpected errors: ${result.errors.map((e) => e.path).join(', ')}`);
+    // 构成留痕（WO-D 实弹枚举 2026-10-01；batch-15 件③追裁连带校准 2026-10-02）：
+    // 真源=13 员工席（TriCompany V1.0 13 席）。目录 16 − board（治理席，v3.1 另册，
+    // 非员工 roster 面）− business-strategy（跨切席，schema 分叉）− registries（registry 族）= 13。
+    // batch-15 件③后 board/bs 经 agent-core Registry family 分支**合法加载**，
+    // roster 纯度由 loadEmployeeRegistry 显式 family 过滤维持（不再系 schema 拒绝
+    // 「恰好排除」）——合法排除面自 errors（=2）移为过滤面（=0，errors 仅载真缺件）。
+    // 前提：agent-core dist ≥v3.1 支持（cso 契约 v3.1；dist 陈旧时 cso 被拒=12 假阴性）。
+    assert.strictEqual(result.employees.length, 13, `expected 13, got ${result.employees.length}`);
+    assert.strictEqual(result.errors.length, 0, `expected 0 load errors (board/bs 系合法过滤非 errors), got ${result.errors.length}: ${result.errors.map((e) => e.path).join(', ')}`);
+    // Registry 席排除显式断言（构成面：两席不入员工 roster）
+    for (const regId of ['board', 'business-strategy']) {
+      assert.ok(
+        !result.employees.some((e: EmployeeRecord) => e.employeeId === regId),
+        `Registry seat "${regId}" must not enter employee roster`
+      );
+    }
 
-    // 3 份缺口员工（r13-2 Step 2 新写）必须在列
-    for (const id of ['business-strategy', 'customer-success-officer', 'deployment-engineer']) {
+    // 缺口席在列校验（WO-D 校准：business-strategy 非员工面移出；cso 为本批治愈席补入）
+    for (const id of ['ceo-chief-of-staff', 'customer-success-officer', 'deployment-engineer']) {
       const emp = result.employees.find((e: EmployeeRecord) => e.employeeId === id);
       assert.ok(emp, `gap employee missing: ${id}`);
       assert.strictEqual(emp!.status.state, 'active', `${id} should be active`);

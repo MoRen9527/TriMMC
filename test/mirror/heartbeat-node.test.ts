@@ -1,5 +1,5 @@
 // ── MirrorStore Node Heartbeat Tests ──
-// heartbeat-dualrun-contract v1.0 §3.1/3.2/3.3: TriMC 侧节点心跳表接线
+// heartbeat-dualrun-contract v1.0 §3.1/3.2/3.3: TriMMC 侧节点心跳表接线
 // 验收（契约 §六.2）：登记 → 30s 标 unknown → degraded 180s 不误判 → 2 次回归 known
 
 import { describe, it } from 'node:test';

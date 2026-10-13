@@ -1,5 +1,5 @@
 // ── Employee Orchestration Layer ──
-// Re-exports for TriMC/src/orchestration/
+// Re-exports for TriMMC/src/orchestration/
 
 export * from './types.js';
 export { loadEmployeeRegistry } from './employee-registry.js';

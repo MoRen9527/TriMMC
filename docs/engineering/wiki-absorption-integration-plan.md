@@ -1,12 +1,12 @@
-# TriMC Wiki Absorption Integration Plan
+# TriMMC Wiki Absorption Integration Plan
 
 版本：V0.1
 日期：2026-07-13
-状态：架构草案（待 CPO / CTO 联审确认后进入 TriMC ROADMAP）
+状态：架构草案（待 CPO / CTO 联审确认后进入 TriMMC ROADMAP）
 
 ## 文档同步元信息
 
-- sourceOfTruth: TriMC/docs/engineering/wiki-absorption-integration-plan.md
+- sourceOfTruth: TriMMC/docs/engineering/wiki-absorption-integration-plan.md
 - publishedFrom: 当前文件（source）
 - syncMode: source-only
 - publishTier: source-only
@@ -35,11 +35,11 @@ TriCompany 已建立员工 LLM-wiki 知识吸收管道，核心架构：
 
 ### 1.2 目标状态
 
-TriMC daemon 模式下：
-- TriMC 自身提供 7×24 runtime，不依赖 Copilot 会话存活
-- Hermes cron → TriMC cron_runner → task-controller 分发 → wiki_refresh_runner 执行
+TriMMC daemon 模式下：
+- TriMMC 自身提供 7×24 runtime，不依赖 Copilot 会话存活
+- Hermes cron → TriMMC cron_runner → task-controller 分发 → wiki_refresh_runner 执行
 - 员工的 inbox → wiki 吸收在无人值守下自动运行
-- 员工进入任何宿主（Copilot / Claude Code / TriMC Web Dashboard）时，wiki 已经是最新状态
+- 员工进入任何宿主（Copilot / Claude Code / TriMMC Web Dashboard）时，wiki 已经是最新状态
 
 ---
 
@@ -61,9 +61,9 @@ TriMC daemon 模式下：
                            │  迁移
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    TriMC daemon（目标）                       │
+│                    TriMMC daemon（目标）                       │
 │                                                             │
-│  Hermes schedule_registry ──→ TriMC cron_runner             │
+│  Hermes schedule_registry ──→ TriMMC cron_runner             │
 │                                     │                       │
 │                              task-controller.dispatch()     │
 │                                     │                       │
@@ -83,24 +83,24 @@ TriMC daemon 模式下：
 
 ### 2.2 组件映射
 
-| TriCompany 当前组件 | TriMC 目标组件 | 映射说明 |
+| TriCompany 当前组件 | TriMMC 目标组件 | 映射说明 |
 |---|---|---|
-| `runtime/cognition/runners/wiki_refresh_runner.py` | `TriMC/src/task-controller/tasks/wiki-refresh.ts` | 单页刷新逻辑迁移到 TriMC task |
-| `runtime/cognition/runners/wiki_batch_refresh_runner.py` | `TriMC/src/task-controller/tasks/wiki-batch-refresh.ts` | 批量刷新逻辑迁移到 TriMC task |
-| `runtime/cognition/tasks/wiki_ingest_task.py` | `TriMC/src/task-controller/tasks/wiki-ingest.ts` | inbox 源读取与标准化 |
-| `runtime/cognition/tasks/wiki_compile_task.py` | `TriMC/src/task-controller/tasks/wiki-compile.ts` | LLM 编译逻辑（用 TriModel 调用） |
-| `runtime/cognition/chief_of_staff_wiki_paths.py` | `TriMC/src/knowledge/employee-paths.ts` | 通用化员工知识路径解析 |
-| `TriCompany-copilot-host-assets/docs/execution/hermes-copilot-host/phase-1/schedules/*.json` | `TriMC/config/schedules/wiki-absorption.json` | 定时规则迁移到 TriMC config |
+| `runtime/cognition/runners/wiki_refresh_runner.py` | `TriMMC/src/task-controller/tasks/wiki-refresh.ts` | 单页刷新逻辑迁移到 TriMMC task |
+| `runtime/cognition/runners/wiki_batch_refresh_runner.py` | `TriMMC/src/task-controller/tasks/wiki-batch-refresh.ts` | 批量刷新逻辑迁移到 TriMMC task |
+| `runtime/cognition/tasks/wiki_ingest_task.py` | `TriMMC/src/task-controller/tasks/wiki-ingest.ts` | inbox 源读取与标准化 |
+| `runtime/cognition/tasks/wiki_compile_task.py` | `TriMMC/src/task-controller/tasks/wiki-compile.ts` | LLM 编译逻辑（用 TriModel 调用） |
+| `runtime/cognition/chief_of_staff_wiki_paths.py` | `TriMMC/src/knowledge/employee-paths.ts` | 通用化员工知识路径解析 |
+| `TriCompany-copilot-host-assets/docs/execution/hermes-copilot-host/phase-1/schedules/*.json` | `TriMMC/config/schedules/wiki-absorption.json` | 定时规则迁移到 TriMMC config |
 | Copilot 会话上下文的 LLM 推理 | TriModel + 独立 inference session | 吸收任务获得专属推理上下文，不共享员工会话 |
 
 ### 2.3 Task Controller 集成
 
-TriMC 的 Task Controller 当前是占位实现（`TriMC/src/task-controller/controller.ts` 仅有 `acceptPlaceholder()`）。
+TriMMC 的 Task Controller 当前是占位实现（`TriMMC/src/task-controller/controller.ts` 仅有 `acceptPlaceholder()`）。
 
 wiki 吸收集成需要在 Task Controller 中注册以下 task type：
 
 ```typescript
-// TriMC/src/task-controller/controller.ts 扩展
+// TriMMC/src/task-controller/controller.ts 扩展
 
 interface WikiRefreshTask {
   type: 'wiki-refresh';
@@ -121,7 +121,7 @@ interface WikiBatchRefreshTask {
 }
 
 // Task Controller 处理逻辑
-function dispatchTask(task: TriMCTask): TaskResult {
+function dispatchTask(task: TriMMCTask): TaskResult {
   switch (task.type) {
     case 'wiki-refresh':
       return executeWikiRefresh(task as WikiRefreshTask);
@@ -134,16 +134,16 @@ function dispatchTask(task: TriMCTask): TaskResult {
 
 ### 2.4 Cron Runner 集成
 
-Hermes schedule_registry 已定义定时规则（如每 2 小时检查 inbox、每日凌晨批量刷新）。TriMC cron_runner 负责：
+Hermes schedule_registry 已定义定时规则（如每 2 小时检查 inbox、每日凌晨批量刷新）。TriMMC cron_runner 负责：
 
-1. 解析 `TriMC/config/schedules/` 下的 schedule JSON
+1. 解析 `TriMMC/config/schedules/` 下的 schedule JSON
 2. 按 cron 表达式触发
 3. 将 schedule-run 转换为 `WikiRefreshTask` 或 `WikiBatchRefreshTask`
 4. 通过 task-controller.dispatch() 分发给对应 worker
 5. 记录执行结果到 audit（run_id + scheduleId + triggerMode=scheduled）
 
 ```typescript
-// TriMC/src/cron/runner.ts 伪代码
+// TriMMC/src/cron/runner.ts 伪代码
 
 class CronRunner {
   private schedules: Schedule[];
@@ -172,7 +172,7 @@ class CronRunner {
 
 ### Phase 1：代码泛化（Copilot-host 阶段）
 
-**目标**：不依赖 TriMC daemon，先在 Copilot-host 内泛化 wiki 吸收代码。
+**目标**：不依赖 TriMMC daemon，先在 Copilot-host 内泛化 wiki 吸收代码。
 
 1. `chief_of_staff_wiki_paths.py` → `employee_wiki_paths.py`（通用化路径解析）
 2. 所有 runner 和 task 从 `chief-of-staff` 前缀改为 `employee` 通用前缀
@@ -181,29 +181,29 @@ class CronRunner {
 
 **产出**：可在 Copilot-host 手动触发任何员工的 wiki 吸收。
 
-### Phase 2：TriMC Task 注册（TriMC scaffold 阶段）
+### Phase 2：TriMMC Task 注册（TriMMC scaffold 阶段）
 
-**目标**：在 TriMC task-controller 中注册 wiki 吸收 task type。
+**目标**：在 TriMMC task-controller 中注册 wiki 吸收 task type。
 
-1. 实现 `TriMC/src/task-controller/tasks/wiki-refresh.ts`
-2. 实现 `TriMC/src/task-controller/tasks/wiki-batch-refresh.ts`
+1. 实现 `TriMMC/src/task-controller/tasks/wiki-refresh.ts`
+2. 实现 `TriMMC/src/task-controller/tasks/wiki-batch-refresh.ts`
 3. 接入 TriModel 进行 LLM 编译（替代当前 Copilot 会话上下文）
 4. 对接 `TriCompany-copilot-host-assets/knowledge/` 作为数据读写目标
 
-**产出**：TriMC 可以执行 wiki 吸收任务，但需要手动触发。
+**产出**：TriMMC 可以执行 wiki 吸收任务，但需要手动触发。
 
-### Phase 3：Cron 与 Schedule 接入（TriMC daemon 阶段）
+### Phase 3：Cron 与 Schedule 接入（TriMMC daemon 阶段）
 
-**目标**：Hermes schedule registry → TriMC cron_runner → 自动触发 wiki 吸收。
+**目标**：Hermes schedule registry → TriMMC cron_runner → 自动触发 wiki 吸收。
 
-1. 实现 `TriMC/src/cron/runner.ts`
-2. 将 `TriCompany-copilot-host-assets/docs/execution/hermes-copilot-host/phase-1/schedules/` 下的 schedule JSON 迁移到 `TriMC/config/schedules/`
+1. 实现 `TriMMC/src/cron/runner.ts`
+2. 将 `TriCompany-copilot-host-assets/docs/execution/hermes-copilot-host/phase-1/schedules/` 下的 schedule JSON 迁移到 `TriMMC/config/schedules/`
 3. cron_runner 按表达式定时触发 task-controller.dispatch()
 4. 验证：在不活跃会话下，wiki 页面自动更新（audit 记录 triggerMode=scheduled）
 
 **产出**：7×24 无人值守自动 wiki 吸收。
 
-### Phase 4：多员工并行（TriMC 正式运营阶段）
+### Phase 4：多员工并行（TriMMC 正式运营阶段）
 
 **目标**：所有在岗员工的 wiki 吸收并行自动运行。
 
@@ -229,16 +229,16 @@ class CronRunner {
 
 ### 4.2 Support Root 读写
 
-**决策**：Phase 2-3 期间，TriMC wiki 吸收的读写目标保持为 `TriCompany-copilot-host-assets/knowledge/`，不迁移数据目录。
+**决策**：Phase 2-3 期间，TriMMC wiki 吸收的读写目标保持为 `TriCompany-copilot-host-assets/knowledge/`，不迁移数据目录。
 
 **理由**：
 - knowledge/ 目录属于 support-object-set，已在 hermes-copilot-host-migration.md 中定义为宿主直接消费的对象集
-- TriMC 启动后 Copilot-host 与 TriMC 可能短期内并行运行
+- TriMMC 启动后 Copilot-host 与 TriMMC 可能短期内并行运行
 - 保持单数据源避免分叉
 
 ### 4.3 Page Promotion 自动审批
 
-**决策**：在 TriMC daemon 模式下，page promotion 的 `working → reviewing` 在达到 schedule 刷新次数阈值后自动晋升；`reviewing → stable` 需要人工或 Agent 审批（approval gate）。
+**决策**：在 TriMMC daemon 模式下，page promotion 的 `working → reviewing` 在达到 schedule 刷新次数阈值后自动晋升；`reviewing → stable` 需要人工或 Agent 审批（approval gate）。
 
 **理由**：
 - 防止无人审核下低质量 wiki 页被标记为 stable
@@ -252,16 +252,16 @@ class CronRunner {
 | 风险 | 影响 | 缓解措施 |
 |------|------|---------|
 | TriModel 在吸收任务上的编译质量不如 Copilot 会话上下文 | wiki 页质量下降 | Phase 2 先做 A/B 对比测试，达标后再裁撤手动方式 |
-| knowledge/ 目录并发读写冲突（Copilot-host 与 TriMC 并行） | 数据不一致 | Phase 3 前明确文件锁策略（如 sqlite WAL 或文件锁） |
-| Hermes schedule JSON schema 需适配 TriMC cron_runner | 迁移成本 | Phase 2 输出 schema 差异分析后再进入 Phase 3 |
+| knowledge/ 目录并发读写冲突（Copilot-host 与 TriMMC 并行） | 数据不一致 | Phase 3 前明确文件锁策略（如 sqlite WAL 或文件锁） |
+| Hermes schedule JSON schema 需适配 TriMMC cron_runner | 迁移成本 | Phase 2 输出 schema 差异分析后再进入 Phase 3 |
 | 其他员工的 llm-wiki-object-spec 尚未创建 | 无法为其他员工启用自动吸收 | 本计划 Phase 1 在代码泛化前先补齐 CPO/CTO 的 spec |
 
 ### 5.1 前置依赖
 
 本计划 Phase 2 依赖以下前置条件：
-- TriMCCodeRegistry 正式启用（task-controller 从占位→可运行）
+- TriMMCCodeRegistry 正式启用（task-controller 从占位→可运行）
 - TriModel 配置完成（provider/model/fallback 可用）
-- TriMC Agent Runtime Layer 可创建独立 inference session
+- TriMMC Agent Runtime Layer 可创建独立 inference session
 - 员工知识目录 schema 已泛化（`employee_wiki_paths.py`）
 
 ---
@@ -270,7 +270,7 @@ class CronRunner {
 
 - **Employee capability contract**：wiki 吸收能力将纳入员工通用能力考核项（知识沉淀与复用）
 - **CompanyGovernanceRegistry**：本计划确认后写入公司治理记录，作为"知识自动化"路线图的执行层附件
-- **Hermes 融合**：本计划是 Hermes 融合中"cron / 定时复杂任务"从 Copilot-host 手动 → TriMC 自动的关键迁移路径
+- **Hermes 融合**：本计划是 Hermes 融合中"cron / 定时复杂任务"从 Copilot-host 手动 → TriMMC 自动的关键迁移路径
 - **运营记录**：Phase 1-4 的进度里程碑回写到相应的周度 operating record
 
 ---
@@ -283,7 +283,7 @@ class CronRunner {
 - [ ] audit 记录中 employeeId 字段正确
 
 ### Phase 2 完成标准
-- [ ] TriMC task-controller 接受 `wiki-refresh` task type
+- [ ] TriMMC task-controller 接受 `wiki-refresh` task type
 - [ ] TriModel 调用完成一次完整的 inbox → wiki 编译
 - [ ] 输出 wiki 页面块结构与总助手动编译的质量对比在可接受范围
 

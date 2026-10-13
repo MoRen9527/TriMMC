@@ -4,7 +4,7 @@
 **Date**: 2026-07-18
 **Status**: ✅ Complete（小柯验证 25/25 PASS）
 **Source**: Claude Code 2.1.88 vendor（`query.ts` 1730 行 + `query/` 4 附件：`config.ts`, `deps.ts`, `stopHooks.ts` 474 行, `tokenBudget.ts` 94 行）
-**Target**: TriMC agent loop（`src/agent-loop/loop.ts`, 181 行）
+**Target**: TriMMC agent loop（`src/agent-loop/loop.ts`, 181 行）
 **Predecessor**: Phase 1 v1（2026-07-17）— 本版为小全+小柯模式全面重审，逐行溯源、逐声明验证
 
 ---
@@ -13,7 +13,7 @@
 
 Claude Code 的 `queryLoop()` 是一个 1730 行的 `while(true)` AsyncGenerator，内部包含 6 个显式 `continue` 站点（均带 `state.transition`）、11 种终端退出原因、7 种 Continue 过渡原因（另 2 种为内层 `while(attemptWithFallback)` 重试，不设 `state.transition`）、3 条分层错误恢复级联。
 
-TriMC 当前 `agentLoop()` 实现约 **10–15%** 的 Claude Code loop 复杂度。核心差距为：
+TriMMC 当前 `agentLoop()` 实现约 **10–15%** 的 Claude Code loop 复杂度。核心差距为：
 - **Tier 1**（Streaming 执行 + 错误恢复）— 将 `catch → yield error + return` 升级为分层恢复级联
 - **Tier 2**（Compaction + Token 管理）— 引入 proactive/reactive compact + token budget tracker
 - **Tier 3**（Hooks + Attachments + MCP 刷新）— 事后验证面 + 多 Agent 上下文注入
@@ -54,7 +54,7 @@ state = {
 }
 ```
 
-TriMC 当前使用 `state.messages.push(...)` + `state.turnCount++` 原地修改模式。一旦增加更多 continue 站点，原地修改会导致状态漂移 bug。
+TriMMC 当前使用 `state.messages.push(...)` + `state.turnCount++` 原地修改模式。一旦增加更多 continue 站点，原地修改会导致状态漂移 bug。
 
 ---
 
@@ -222,22 +222,22 @@ type StopHookResult = {
 
 ---
 
-## 9. Gap Analysis：TriMC loop.ts vs Claude Code queryLoop
+## 9. Gap Analysis：TriMMC loop.ts vs Claude Code queryLoop
 
 ### 9.1 当前具备（✅）
 
-| 能力 | TriMC | Claude Code | 说明 |
+| 能力 | TriMMC | Claude Code | 说明 |
 |------|-------|-------------|------|
 | while-true loop | ✅ | ✅ | 相同基础模式 |
-| AsyncGenerator yield | ✅ | ✅ | TriMC: AgentEvent, CC: StreamEvent |
-| Max turns guard | ✅ | ✅ | TriMC: 25, CC: 可配置 |
-| Tool dispatch | ✅ | ✅ | TriMC: sequential for-of, CC: streaming executor or batch |
+| AsyncGenerator yield | ✅ | ✅ | TriMMC: AgentEvent, CC: StreamEvent |
+| Max turns guard | ✅ | ✅ | TriMMC: 25, CC: 可配置 |
+| Tool dispatch | ✅ | ✅ | TriMMC: sequential for-of, CC: streaming executor or batch |
 | Tool result → history | ✅ | ✅ | 相同模式 |
-| State management | ⚠️ in-place | ✅ spread-replace | TriMC 原地修改，CC 全局替换 |
+| State management | ⚠️ in-place | ✅ spread-replace | TriMMC 原地修改，CC 全局替换 |
 
 ### 9.2 缺失 — Tier 1（Streaming + Error Recovery）
 
-| 能力 | TriMC 当前 | 差距 |
+| 能力 | TriMMC 当前 | 差距 |
 |------|-----------|------|
 | Streaming tool executor | 等待完整响应后执行工具 | 30-50% 延迟劣势（多工具轮次） |
 | Streaming fallback | 无 | Lost response on stream interruption |
@@ -248,7 +248,7 @@ type StopHookResult = {
 
 ### 9.3 缺失 — Tier 2（Compaction + Token Management）
 
-| 能力 | TriMC 当前 | 差距 |
+| 能力 | TriMMC 当前 | 差距 |
 |------|-----------|------|
 | Auto-compact (proactive) | 无 | 长对话撞 context 限制 |
 | Reactive compact | 无 | 413 错误致命 |
@@ -260,7 +260,7 @@ type StopHookResult = {
 
 ### 9.4 缺失 — Tier 3（Hooks + Attachments + MCP）
 
-| 能力 | TriMC 当前 | 差距 |
+| 能力 | TriMMC 当前 | 差距 |
 |------|-----------|------|
 | Stop hooks | 无 | 无自动验证 / 拦截 |
 | Post-sampling hooks | 无 | 缺失 observability / 回调面 |
@@ -299,15 +299,15 @@ type StopHookResult = {
 
 ## 11. Key Design Decisions
 
-1. **Spread-replace state IS correct for multi-continue loops**。TriMC 当前仅 1 个 continue 站点，但这不会持续。
+1. **Spread-replace state IS correct for multi-continue loops**。TriMMC 当前仅 1 个 continue 站点，但这不会持续。
 
-2. **Streaming tool execution IS NOT premature optimization**。Claude Code 在 60+ 工具规模上证明了其价值。TriMC 目前 6 个工具，但 sub-agent dispatch（task tool）延迟最高，流式重叠收益最大。
+2. **Streaming tool execution IS NOT premature optimization**。Claude Code 在 60+ 工具规模上证明了其价值。TriMMC 目前 6 个工具，但 sub-agent dispatch（task tool）延迟最高，流式重叠收益最大。
 
 3. **Error recovery cascade IS the highest-leverage pattern**。无恢复级联意味着任何模型错误都杀死对话。应作为 Tier 1 的第一项。
 
 4. **Dependency injection (QueryDeps) is nice-to-have**。TriModel 的 provider 系统已提供关键抽象。测试 mock 需求达到瓶颈时再引入。
 
-5. **TriMC does NOT need all 11 terminal / 7 transition reasons**。从 4 个终端原因（`completed`, `max_turns`, `model_error`, `aborted`）开始，逐步扩展。
+5. **TriMMC does NOT need all 11 terminal / 7 transition reasons**。从 4 个终端原因（`completed`, `max_turns`, `model_error`, `aborted`）开始，逐步扩展。
 
 6. **Token budget 是最简单的成本护栏**。90% 阈值 + 3 次 diminishing returns 检查，仅 94 行代码，效果显著。
 
@@ -340,17 +340,17 @@ type StopHookResult = {
 | V-021 | abortController 在 streaming 和 tools 两个路径中分别检查 | query.ts:1015, 1485 | ✅ PASS |
 | V-022 | Compaction 后 taskBudget 捕获 pre-compact final context | query.ts:508–514 | ✅ PASS |
 | V-023 | hasAttemptedReactiveCompact 防止 413→stop-hook→413 螺旋 | query.ts:1292–1297 | ✅ PASS |
-| V-024 | TriMC loop.ts 仅有 1 个 continue 站点（next_turn），无 stop hooks / budget / compaction | loop.ts:152–154 | ✅ PASS |
-| V-025 | TriMC 使用 in-place mutation (state.messages.push)，非 spread-replace | loop.ts:107, 153–154 | ✅ PASS |
+| V-024 | TriMMC loop.ts 仅有 1 个 continue 站点（next_turn），无 stop hooks / budget / compaction | loop.ts:152–154 | ✅ PASS |
+| V-025 | TriMMC 使用 in-place mutation (state.messages.push)，非 spread-replace | loop.ts:107, 153–154 | ✅ PASS |
 
 ---
 
 ## Sources
 
-- `TriMC/vendor/claude-code/src/query.ts`（全文 1730 行，分段读取验证）
-- `TriMC/vendor/claude-code/src/query/tokenBudget.ts`（全文 94 行，完整读取）
-- `TriMC/vendor/claude-code/src/query/stopHooks.ts`（全文 474 行，完整读取）
-- `TriMC/vendor/claude-code/src/query/config.ts`（QueryConfig 模式）
-- `TriMC/vendor/claude-code/src/query/deps.ts`（QueryDeps DI 模式）
-- `TriMC/src/agent-loop/loop.ts`（TriMC 当前实现，181 行，完整读取）
-- `TriMC/docs/registry/code-state.md`（当前 code readiness）
+- `TriMMC/vendor/claude-code/src/query.ts`（全文 1730 行，分段读取验证）
+- `TriMMC/vendor/claude-code/src/query/tokenBudget.ts`（全文 94 行，完整读取）
+- `TriMMC/vendor/claude-code/src/query/stopHooks.ts`（全文 474 行，完整读取）
+- `TriMMC/vendor/claude-code/src/query/config.ts`（QueryConfig 模式）
+- `TriMMC/vendor/claude-code/src/query/deps.ts`（QueryDeps DI 模式）
+- `TriMMC/src/agent-loop/loop.ts`（TriMMC 当前实现，181 行，完整读取）
+- `TriMMC/docs/registry/code-state.md`（当前 code readiness）

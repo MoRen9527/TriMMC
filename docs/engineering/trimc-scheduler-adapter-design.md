@@ -2,24 +2,24 @@
 
 ## 文档同步元信息
 
-- sourceOfTruth: TriMC/docs/engineering/trimc-scheduler-adapter-design.md
+- sourceOfTruth: TriMMC/docs/engineering/trimc-scheduler-adapter-design.md
 - syncMode: source-only
 - lastSyncedAt: 2026-08-13
 
 > 状态：APPROVED（r1-1 交付，CTO 小狄，2026-08-13）
 > 树：TriMetaverse/docs/workflow/operating-records/2026-W33/trees/prod-grade-1-trimc-weekly-cron（生产级开发期首树，CEO 批准）
 > 上游 brief：同树 `briefs/r1-1-20260813160943.md`（方案全文与决策依据）
-> 关联：TriCompany/docs/engineering/trilc-trimc-runtime-parity.md V1.1；TriMC/docs/engineering/cos-005-openclaw-absorption-plan.md（APPROVED 2026-07-16）
+> 关联：TriCompany/docs/engineering/trilc-trimc-runtime-parity.md V1.1；TriMMC/docs/engineering/cos-005-openclaw-absorption-plan.md（APPROVED 2026-07-16）
 
 ---
 
 ## 1. 背景与结论
 
-生产级开发期首树目标：TriMC 侧 scheduler 模块定时触发周平面迁移五段链（`TriCompany/runtime/cognition/weekly_plane_shift.py`：create→migrate→carry_over→validate→agent_close），在服务器舰队克隆执行 W33→W34 迁移，硬 deadline 2026-08-16 23:59 前可触发。
+生产级开发期首树目标：TriMMC 侧 scheduler 模块定时触发周平面迁移五段链（`TriCompany/runtime/cognition/weekly_plane_shift.py`：create→migrate→carry_over→validate→agent_close），在服务器舰队克隆执行 W33→W34 迁移，硬 deadline 2026-08-16 23:59 前可触发。
 
-**核心结论：复用 `@tricompany/agent-core` 共享 scheduler（croner + JSON job-store + JobExecutor），TriMC 仓只写服务域适配器 `src/cron/`。不移植 TriLC cron，不新写调度核心。**
+**核心结论：复用 `@tricompany/agent-core` 共享 scheduler（croner + JSON job-store + JobExecutor），TriMMC 仓只写服务域适配器 `src/cron/`。不移植 TriRLC cron，不新写调度核心。**
 
-判据：parity V1.1 §1 禁止「复制一份 TriLC/src 到 TriMC/src」；§2 声明共享 core 已包含 scheduler；`agent-core/src/scheduler/` 已实现 8 文件 1066 行 + 5 测试并从 `src/index.ts` 全量导出。
+判据：parity V1.1 §1 禁止「复制一份 TriRLC/src 到 TriMMC/src」；§2 声明共享 core 已包含 scheduler；`agent-core/src/scheduler/` 已实现 8 文件 1066 行 + 5 测试并从 `src/index.ts` 全量导出。
 
 ---
 
@@ -27,16 +27,16 @@
 
 | 决策 | 结论 | 依据 |
 | --- | --- | --- |
-| D1 模块命名 | TriMC 侧适配器 = **`src/cron/`** | ① 与 CLI 动词 `trimc cron` 一致；② 与 TriLC host 层 `src/cron/`（行为对标基准）命名对齐；③ `src/orchestration/employee-scheduler.ts` 已占用 "scheduler" 语义（员工调度，agent 域），用 "cron" 零冲突。共享核心保持 `agent-core/src/scheduler/`。边界声明见 `src/cron/index.ts` 模块头注释 |
-| D2 语言 | **TypeScript** | ① 共享 core 为 TS 且已全量导出；② TriMC server（`src/server/app.ts`）为 TS 进程，scheduler 须装配其中；③ croner ^10.0.1 已在 TriMC dependencies；④ COS-005 决策：Python 仅 IPD heartbeat 域；⑤ 服务器 Node v18.20.8 无 `node:sqlite`（TriLC SQLite store 不可移植），JSON 文件 store 纯 fs 兼容 v18。执行器 spawn python3 属进程级跨语言调用，非 TriMC 新 Python 模块 |
-| D3 复用方式 | **复用共享 core + 薄适配器**；TriLC src/cron 仅作行为对标基准（CLI 契约、HTTP 路由表、防并发/超时/降级语义），不作代码移植源 | parity V1.1 §1；agent-core 已有全部调度核心；TriLC cron 的 session/LLM/localbus 耦合正是共享 core 已剔除部分。版本差标注：COS-005 规划 TriMC `src/scheduler/` 落点，实际演进为 agent-core 共享核心（R7 2026-08-12 CEO 批准），本设计沿用其 croner/JSON 原子写/Python 域边界决策，修正落点与消费方式 |
+| D1 模块命名 | TriMMC 侧适配器 = **`src/cron/`** | ① 与 CLI 动词 `trimc cron` 一致；② 与 TriRLC host 层 `src/cron/`（行为对标基准）命名对齐；③ `src/orchestration/employee-scheduler.ts` 已占用 "scheduler" 语义（员工调度，agent 域），用 "cron" 零冲突。共享核心保持 `agent-core/src/scheduler/`。边界声明见 `src/cron/index.ts` 模块头注释 |
+| D2 语言 | **TypeScript** | ① 共享 core 为 TS 且已全量导出；② TriMMC server（`src/server/app.ts`）为 TS 进程，scheduler 须装配其中；③ croner ^10.0.1 已在 TriMMC dependencies；④ COS-005 决策：Python 仅 IPD heartbeat 域；⑤ 服务器 Node v18.20.8 无 `node:sqlite`（TriRLC SQLite store 不可移植），JSON 文件 store 纯 fs 兼容 v18。执行器 spawn python3 属进程级跨语言调用，非 TriMMC 新 Python 模块 |
+| D3 复用方式 | **复用共享 core + 薄适配器**；TriRLC src/cron 仅作行为对标基准（CLI 契约、HTTP 路由表、防并发/超时/降级语义），不作代码移植源 | parity V1.1 §1；agent-core 已有全部调度核心；TriRLC cron 的 session/LLM/localbus 耦合正是共享 core 已剔除部分。版本差标注：COS-005 规划 TriMMC `src/scheduler/` 落点，实际演进为 agent-core 共享核心（R7 2026-08-12 CEO 批准），本设计沿用其 croner/JSON 原子写/Python 域边界决策，修正落点与消费方式 |
 
 ---
 
 ## 3. 架构与模块清单
 
 ```
-TriMC Server（tsx / systemd，root）
+TriMMC Server（tsx / systemd，root）
 ├─ src/server/app.ts      cron 路由 if 块 + start()/shutdown 装配 + healthz cron 块
 ├─ src/cron/（本设计新增，服务域适配器）
 │   ├─ week-math.ts        ISO week 纯函数（today → {fromWeek, toWeek, startDate}）
@@ -81,7 +81,7 @@ TriCompany/packages/agent-core/src/scheduler/
   2. token 替换 `{fromWeek}` `{toWeek}` `{startDate}`；
   3. spawn `/bin/bash -e`（`&&` 链失败即停），cwd 按 payload；
   4. runAs 降权：`runAs: "fleet"` 以 uid/gid 1001 执行（复用 `env.ts` TRIMC_RUNAS 的 M1 session-bridge 模式）；未设以进程用户执行（本地开发）；
-  5. 超时默认 10min（对齐 TriLC），`payload.timeoutMs` 可覆盖，超时 SIGKILL；
+  5. 超时默认 10min（对齐 TriRLC），`payload.timeoutMs` 可覆盖，超时 SIGKILL；
   6. stdout/stderr 捕获，写 `$TRIMC_CONFIG_DIR/cron/logs/<jobId>__<ISO>.log`（`__` 分隔 jobId 与时间戳，service.ts 解析依赖）+ 回显 systemd journal。
 - **stale-run 恢复**（agent-core 缺口的适配器侧补齐）：service.start() 将所有 `runningAtMs ≠ null` 重置为 null（崩溃残留恢复，否则 job 永久卡 running）。
 
@@ -105,7 +105,7 @@ cd /srv/fleet/TriCompany && python3.8 -m runtime.cognition.weekly_plane_shift \
 && cd /srv/fleet/TriMetaverse \
 && git add docs/workflow/operating-records \
 && (git diff --cached --quiet || git -c user.name="TriMC Scheduler" -c user.email="trimc@tri.company" \
-     commit -m "ops: weekly plane shift {fromWeek}->{toWeek} (TriMC scheduler)") \
+     commit -m "ops: weekly plane shift {fromWeek}->{toWeek} (TriMMC scheduler)") \
 && git push /srv/git/TriMetaverse.git HEAD:dev
 ```
 
@@ -120,7 +120,7 @@ cd /srv/fleet/TriCompany && python3.8 -m runtime.cognition.weekly_plane_shift \
 
 ### 5.2 git 链路与边界
 
-1. 服务器侧：fleet 克隆 commit → push `/srv/git/TriMetaverse.git`（生产级开发期 §三方向例外：周平面文件 TriMC 编排层维护）。
+1. 服务器侧：fleet 克隆 commit → push `/srv/git/TriMetaverse.git`（生产级开发期 §三方向例外：周平面文件 TriMMC 编排层维护）。
 2. 本地回流：`git pull sg-server dev`——运维回流步骤，编排层执行，**调度器不负责**（服务器无法触发本地动作）。
 3. 写方向单主体不变：服务器侧只写 `docs/workflow/operating-records/`；代码文件仍本地发起。
 
@@ -133,7 +133,7 @@ cd /srv/fleet/TriCompany && python3.8 -m runtime.cognition.weekly_plane_shift \
 | 3 | agent-core 链 | `/srv/fleet/TriMC/node_modules/@tricompany/agent-core` 可解析且有 dist（M0 有同模式先例） |
 | 4 | fleet git 身份 | `-c` 内联身份，不依赖 fleet 全局 config |
 | 5 | TRIMC_CONFIG_DIR | `/var/lib/trimc` 建目录 + 环境注入 |
-| 6 | Node engines 对齐 | 服务器 Node v18.20.8 实测；package.json engines 下调 `>=18.20.0`（TriMC 已在 18 上跑通 M1-M3，tsx>=18.18 满足；tsconfig ES2022 目标 Node 18 完整支持）。新代码 API 面限制 Node 18：禁 `import.meta.dirname`（20.11+）、`fs.glob`（22+）、`node:sqlite`、`Array.prototype.toSorted/toSpliced/toReversed/with`（20+）、`process.loadEnvFile`；`@types/node ^24` 只是编译期类型面，不代表运行时可用。agent-core scheduler 从未在服务器实例化过，P4 smoke 首次实战，暴露问题走共享 core 缺口升级通道 |
+| 6 | Node engines 对齐 | 服务器 Node v18.20.8 实测；package.json engines 下调 `>=18.20.0`（TriMMC 已在 18 上跑通 M1-M3，tsx>=18.18 满足；tsconfig ES2022 目标 Node 18 完整支持）。新代码 API 面限制 Node 18：禁 `import.meta.dirname`（20.11+）、`fs.glob`（22+）、`node:sqlite`、`Array.prototype.toSorted/toSpliced/toReversed/with`（20+）、`process.loadEnvFile`；`@types/node ^24` 只是编译期类型面，不代表运行时可用。agent-core scheduler 从未在服务器实例化过，P4 smoke 首次实战，暴露问题走共享 core 缺口升级通道 |
 
 ---
 
@@ -151,7 +151,7 @@ cd /srv/fleet/TriCompany && python3.8 -m runtime.cognition.weekly_plane_shift \
 | GET | `/internal/v1/cron/log` | 执行日志（`?jobId=&limit=`） |
 | GET | `/internal/v1/cron/status` | `{ running, degraded, consecutiveErrors, jobCount }` |
 
-`/healthz` 增加 cron 块：`{ enabled, jobCount, degraded, consecutiveFailures }`（对齐 TriLC）。
+`/healthz` 增加 cron 块：`{ enabled, jobCount, degraded, consecutiveFailures }`（对齐 TriRLC）。
 
 ### 6.2 CLI（`trimc cron ...`）
 
@@ -201,7 +201,7 @@ cd /srv/fleet/TriCompany && python3.8 -m runtime.cognition.weekly_plane_shift \
 - TriMetaverse/docs/execution/production-grade-development-plan.md v2026.W33.1
 - TriCompany/docs/engineering/trilc-trimc-runtime-parity.md V1.1
 - TriCompany/packages/agent-core/src/scheduler/（8 文件 + 5 测试）与 src/index.ts 导出面
-- TriLC/src/cron/（行为对标基准）、TriLC/src/cli.ts cron 段、TriLC/src/server/app.ts cron 路由段
+- TriRLC/src/cron/（行为对标基准）、TriRLC/src/cli.ts cron 段、TriRLC/src/server/app.ts cron 路由段
 - TriCompany/runtime/cognition/weekly_plane_shift.py（CLI 契约）
-- TriMC/docs/registry/code-state.md、docs/registry/business-state.md、docs/engineering/cos-005-openclaw-absorption-plan.md
+- TriMMC/docs/registry/code-state.md、docs/registry/business-state.md、docs/engineering/cos-005-openclaw-absorption-plan.md
 - TriMetaverse/docs/execution/server-fleet-m0.md（服务器实测：Node v18.20.8 / Python 3.6.8 / trimc.service / 属主矩阵）

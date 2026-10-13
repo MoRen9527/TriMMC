@@ -1,5 +1,5 @@
 // ── Config Sync 契约类型与校验（接收侧独立实现）──
-// init-collab-i4-five-dim-sync i4-1 拆解 §一 schema 契约（TriMC 侧）：
+// init-collab-i4-five-dim-sync i4-1 拆解 §一 schema 契约（TriMMC 侧）：
 //
 //   1. 五维分段 bundle：company / model / keys / employees / project，
 //      单维失败 = 该维段 { status: 'unavailable', reason } 降级，不阻塞全链。
@@ -11,7 +11,7 @@
 //   4. 幂等单调：bundleId 唯一；generatedAt 严格递增；同 bundleId 重复
 //      apply = no-op；更旧 generatedAt = 忽略；更旧但 contentHash 异 = 告警。
 //
-// TriLC 生成端 src/company/sync-bundle.ts 独立实现同一契约（跨仓共享包升级挂后续）。
+// TriRLC 生成端 src/company/sync-bundle.ts 独立实现同一契约（跨仓共享包升级挂后续）。
 
 import { createHash } from 'node:crypto';
 

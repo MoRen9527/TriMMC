@@ -1,13 +1,13 @@
-# TriMC Business State
+# TriMMC Business State
 
 ## Registry Role
 
-- 本文件是 `TriMC` 的 business registry 工作层。
-- `TriMC` 的 `product-state.md` 与 `code-state.md` 默认应以本文件作为业务上游约束。
+- 本文件是 `TriMMC` 的 business registry 工作层。
+- `TriMMC` 的 `product-state.md` 与 `code-state.md` 默认应以本文件作为业务上游约束。
 
 ## Module Business Role
 
-- `TriMC` 是服务域主控模块，也是统一运行面、任务控制、服务域执行、审计和事件聚合的承接层。
+- `TriMMC` 是服务域主控模块，也是统一运行面、任务控制、服务域执行、审计和事件聚合的承接层。
 
 ## Current Default Business Position
 

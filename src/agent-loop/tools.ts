@@ -1,7 +1,7 @@
-// ── TriMC Agent Loop: Built-in Tool Registry ──
+// ── TriMMC Agent Loop: Built-in Tool Registry ──
 // CTO-008-C Phase C2: Registry layer delegates to @tricompany/agent-core.
 // Concrete tool implementations (read_file, write_file, edit_file, shell_exec, glob_search, task)
-// remain TriMC-local and are registered into agent-core's shared registry.
+// remain TriMMC-local and are registered into agent-core's shared registry.
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';

@@ -4,7 +4,7 @@
 
 import type { AgentDefinition } from './types.js';
 
-/** Claude Code tool name → TriMC mapping (used in tools declarations) */
+/** Claude Code tool name → TriMMC mapping (used in tools declarations) */
 export const CLAUDE_TOOL_MAP: Record<string, string> = {
   'Read': 'read_file',
   'Bash': 'shell_exec',

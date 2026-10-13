@@ -4,13 +4,13 @@
 **Date**: 2026-07-18
 **Status**: ✅ Complete（小柯验证 25/25 PASS，发现并修正 V-005 一处计数差异）
 **Source**: Claude Code 2.1.88 vendor（`src/utils/permissions/` 目录，24 个源文件，~6,900 行）
-**Target**: TriMC（当前权限系统成熟度：0% — 无独立的工具权限决策管道）
+**Target**: TriMMC（当前权限系统成熟度：0% — 无独立的工具权限决策管道）
 
 ---
 
 ## 1. Executive Summary
 
-Claude Code 的工具权限系统是其安全架构的脊梁——不是简单的"允许/拒绝"二元开关，而是一个**15 步决策管道**，融合了规则匹配、模式覆盖、分类器 AI 判断、拒绝追踪、路径验证和 Kill Switch 熔断。TriMC 当前完全没有独立的权限决策系统（仅依赖宿主 Copilot CLI 的默认安全策略）。
+Claude Code 的工具权限系统是其安全架构的脊梁——不是简单的"允许/拒绝"二元开关，而是一个**15 步决策管道**，融合了规则匹配、模式覆盖、分类器 AI 判断、拒绝追踪、路径验证和 Kill Switch 熔断。TriMMC 当前完全没有独立的权限决策系统（仅依赖宿主 Copilot CLI 的默认安全策略）。
 
 Phase 4 完整拆解了 Claude Code 权限系统的 **14 个子系统**：
 
@@ -29,7 +29,7 @@ Phase 4 完整拆解了 Claude Code 权限系统的 **14 个子系统**：
 13. **Kill Switch 熔断**（`bypassPermissionsKillswitch.ts`，141 行）— Statsig/GB 远程禁用
 14. **Shell 规则匹配**（`shellRuleMatching.ts`，207 行）— exact/prefix/wildcard 三级匹配
 
-**核心发现**：Claude Code 的权限系统采用了"规则优先 + 分类器兜底"的纵深防御架构。最关键的安全设计是 **Safety Check 的 bypass-immune 属性**——即使在 `bypassPermissions` 或 `auto` 模式下，触及 `.git/`、`.claude/`、shell configs 的操作仍必须经过显式用户确认。这个设计直接对应 TriMC 项目入口路由层方案中提出的 `auto-fallback` 安全回退循环。
+**核心发现**：Claude Code 的权限系统采用了"规则优先 + 分类器兜底"的纵深防御架构。最关键的安全设计是 **Safety Check 的 bypass-immune 属性**——即使在 `bypassPermissions` 或 `auto` 模式下，触及 `.git/`、`.claude/`、shell configs 的操作仍必须经过显式用户确认。这个设计直接对应 TriMMC 项目入口路由层方案中提出的 `auto-fallback` 安全回退循环。
 
 **吸收档位建议**：
 - **Tier 1（MVP 必需）**：规则系统 + 决策管道 + 权限模式（default/acceptEdits/bypassPermissions）
@@ -643,37 +643,37 @@ kickOutOfAutoIfNeeded(ctx) {
 
 ---
 
-## 14. TriMC Gap Analysis
+## 14. TriMMC Gap Analysis
 
 ### 14.1 当前状态
 
-TriMC 当前**完全没有独立的工具权限决策系统**。当前安全依赖：
+TriMMC 当前**完全没有独立的工具权限决策系统**。当前安全依赖：
 - Copilot CLI 宿主层的默认工具限制
 - 入口路由层的 `active_host` flag + health check 机制（设计阶段）
 
 ### 14.2 11 维度差距评估
 
-| # | 维度 | Claude Code | TriMC 当前 | 差距 |
+| # | 维度 | Claude Code | TriMMC 当前 | 差距 |
 |---|------|------------|-----------|------|
 | 1 | 权限模式系统 | 7 种模式 | 0 | ⬜⬜⬜⬜⬜ 100% |
 | 2 | 规则解析引擎 | 完整 parser + 遗留别名 | 0 | ⬜⬜⬜⬜⬜ 100% |
 | 3 | 15 步决策管道 | 完整管道 + 4 阶段 | 0 | ⬜⬜⬜⬜⬜ 100% |
 | 4 | 规则持久化 | 4 级 source + 6 种 update | 0 | ⬜⬜⬜⬜⬜ 100% |
 | 5 | Shell 规则匹配 | exact/prefix/wildcard | 0 | ⬜⬜⬜⬜⬜ 100% |
-| 6 | 分类器系统 | tool-use + XML 2-Stage | 0（TriMC 无 auto 模式概念） | ⬜⬜⬜⬜⬜ 100% |
+| 6 | 分类器系统 | tool-use + XML 2-Stage | 0（TriMMC 无 auto 模式概念） | ⬜⬜⬜⬜⬜ 100% |
 | 7 | 拒绝追踪 | 3 consecutive / 20 total | 0 | ⬜⬜⬜⬜⬜ 100% |
 | 8 | 危险权限检测 | Bash + PS + Task 全覆盖 | 0 | ⬜⬜⬜⬜⬜ 100% |
 | 9 | 路径验证 | 5-step 检查链 + 8-step 安全序列 | 0 | ⬜⬜⬜⬜⬜ 100% |
 | 10 | Shadow Rule 检测 | allow/deny shadow + shared setting | 0 | ⬜⬜⬜⬜⬜ 100% |
 | 11 | Kill Switch 熔断 | Statsig + GB + settings 三层 | 入口路由层 auto-fallback（设计阶段） | ⬜⬜⬜⬜⬜ 100% |
 
-**总体评估**：TriMC 权限系统成熟度 = **0%**。Claude Code 的权限系统是一个完整、经过生产验证的安全架构，覆盖了从规则到 AI 分类到熔断的全链路。
+**总体评估**：TriMMC 权限系统成熟度 = **0%**。Claude Code 的权限系统是一个完整、经过生产验证的安全架构，覆盖了从规则到 AI 分类到熔断的全链路。
 
 ---
 
 ## 15. Absorption Recommendation Tiers
 
-### Tier 1 — MVP 必需（与 TriMC agent-loop 直接耦合）
+### Tier 1 — MVP 必需（与 TriMMC agent-loop 直接耦合）
 
 **目标**：建立最小的工具权限决策能力，支撑 safe/unsafe 工具区分
 
@@ -697,7 +697,7 @@ TriMC 当前**完全没有独立的工具权限决策系统**。当前安全依�
 
 4. **规则持久化**：`addRules` + `removeRules` 两种更新操作
 
-**预估工时**：3-5 天（基于 TriMC 当前 TypeScript 基础设施）
+**预估工时**：3-5 天（基于 TriMMC 当前 TypeScript 基础设施）
 
 ### Tier 2 — 安全增强（独立安全模块）
 
@@ -710,11 +710,11 @@ TriMC 当前**完全没有独立的工具权限决策系统**。当前安全依�
 
 2. **Safety Check 系统**：
    - `.git/`、`.claude/`、shell configs 的 bypass-immune 检查
-   - 与 TriMC 项目特定的安全路径扩展
+   - 与 TriMMC 项目特定的安全路径扩展
 
 3. **拒绝追踪**（`denialTracking.ts`）：
    - consecutive: 3，total: 20
-   - 与 TriMC 的 auto-fallback 机制集成（入口路由层 auto-fallback 循环）
+   - 与 TriMMC 的 auto-fallback 机制集成（入口路由层 auto-fallback 循环）
 
 4. **Dangerous Permission 检测**：
    - Bash 解释器前缀 + 通配符
@@ -723,15 +723,15 @@ TriMC 当前**完全没有独立的工具权限决策系统**。当前安全依�
 
 **预估工时**：5-7 天
 
-### Tier 3 — 智能分类（与 TriMC 的 Copilot-host/TriMC-host 双模式集成）
+### Tier 3 — 智能分类（与 TriMMC 的 Copilot-host/TriMMC-host 双模式集成）
 
 **目标**：引入 AI 分类器实现 auto 模式
 
-1. **分类器白名单**（22 个安全工具 → TriMC 等价映射）：
+1. **分类器白名单**（22 个安全工具 → TriMMC 等价映射）：
    - 文件读取、搜索、任务管理、团队协调、Misc
 
 2. **YOLO 分类器适配**：
-   - TriMC 使用自己的模型端点（而非 Claude API）
+   - TriMMC 使用自己的模型端点（而非 Claude API）
    - 支持 tool_use 格式的结构化输出
    - 同等的 fail-closed 策略
 
@@ -741,14 +741,14 @@ TriMC 当前**完全没有独立的工具权限决策系统**。当前安全依�
 
 4. **acceptEdits 快速路径**：编辑工具 + CWD 内 → 跳过分类器
 
-**预估工时**：7-10 天（取决于 TriMC 模型端点的可用性）
+**预估工时**：7-10 天（取决于 TriMMC 模型端点的可用性）
 
 ### Tier 4 — 运维能力（远程管理 + 可观测性）
 
 **目标**：企业级安全运维
 
 1. **Kill Switch 熔断**：
-   - TriMC 自己的远程配置端点（替代 Statsig/GB）
+   - TriMMC 自己的远程配置端点（替代 Statsig/GB）
    - `bypassPermissions` 和 `auto` 模式独立熔断
    - `/login` 后重置
 
@@ -758,7 +758,7 @@ TriMC 当前**完全没有独立的工具权限决策系统**。当前安全依�
    - 共享设置 vs 个人设置区分
 
 3. **Mode Transition UI**（`getNextPermissionMode` + `cyclePermissionMode`）：
-   - TriMC 自己的 Shift+Tab 等效模式切换
+   - TriMMC 自己的 Shift+Tab 等效模式切换
    - enter/exit auto 模式的上下文清理
 
 4. **权限审计日志**：决策原因 + 来源 + 模式 + 结果的完整记录
@@ -769,15 +769,15 @@ TriMC 当前**完全没有独立的工具权限决策系统**。当前安全依�
 
 ## 16. Key Design Decisions Worth Adopting
 
-1. **Safety Check 的 bypass-immune 属性**：TriMC 入口路由层 auto-fallback 设计中的"健康检查 3 次失败自动回退"应该也保留类似的 bypass-immune 锚点——某些关键安全检查（如项目配置修改、密钥文件操作）在回退到 Copilot-host 时也不能跳过。
+1. **Safety Check 的 bypass-immune 属性**：TriMMC 入口路由层 auto-fallback 设计中的"健康检查 3 次失败自动回退"应该也保留类似的 bypass-immune 锚点——某些关键安全检查（如项目配置修改、密钥文件操作）在回退到 Copilot-host 时也不能跳过。
 
 2. **Classification as Tier 2, not Tier 1**：Claude Code 的经验表明，规则系统 + 模式系统就覆盖了 90%+ 的日常场景。分类器（auto 模式）是锦上添花，不是 MVP 必需。
 
-3. **Denial Tracking 双重阈值**：consecutive（短窗口异常）和 total（长期趋势）分开追踪的设计很聪明，TriMC 直接采用。
+3. **Denial Tracking 双重阈值**：consecutive（短窗口异常）和 total（长期趋势）分开追踪的设计很聪明，TriMMC 直接采用。
 
-4. **Mode Transition 的 Transform 模式**：`verifyAutoModeGateAccess` 返回 Transform 函数而非预计算 context，避免了异步配置查询期间的竞态条件——TriMC 的入口路由层 active_host 切换应该采用类似的模式。
+4. **Mode Transition 的 Transform 模式**：`verifyAutoModeGateAccess` 返回 Transform 函数而非预计算 context，避免了异步配置查询期间的竞态条件——TriMMC 的入口路由层 active_host 切换应该采用类似的模式。
 
-5. **Rule Source 优先级分级**：policySettings > userSettings > projectSettings > localSettings > cliArg 的分级设计保证了企业策略不被本地覆盖——TriMC 如果未来支持 enterprise tier 需要这个设计。
+5. **Rule Source 优先级分级**：policySettings > userSettings > projectSettings > localSettings > cliArg 的分级设计保证了企业策略不被本地覆盖——TriMMC 如果未来支持 enterprise tier 需要这个设计。
 
 ---
 
@@ -809,7 +809,7 @@ TriMC 当前**完全没有独立的工具权限决策系统**。当前安全依�
 | V-022 | 权限持久化 destination 分类正确 | `PermissionUpdate.ts` supportsPersistence | ✅ PASS |
 | V-023 | PowerShell deny guidance 映射正确 | `yoloClassifier.ts` POWERSHELL_DENY_GUIDANCE | ✅ PASS |
 | V-024 | Gap Analysis 11 维度评估合理 | 全源码阅读交叉验证 | ✅ PASS |
-| V-025 | Absorption Tiers 在 TriMC 当前架构下可行 | TriMC 当前 `src/agent-loop/` 结构 | ✅ PASS |
+| V-025 | Absorption Tiers 在 TriMMC 当前架构下可行 | TriMMC 当前 `src/agent-loop/` 结构 | ✅ PASS |
 
 ---
 
@@ -851,4 +851,4 @@ TriMC 当前**完全没有独立的工具权限决策系统**。当前安全依�
 - `docs/engineering/claude-code-absorption/phase-1-core-loop.md` — 核心 Loop 分析（待小全+小柯重审）
 - `docs/engineering/claude-code-absorption/phase-2-prompt-cache.md` — Prompt Cache 分析（待小全+小柯重审）
 - `docs/engineering/claude-code-absorption/phase-3-subagent-tree.md` — Sub-Agent Tree 分析（已完成）
-- `TriCompany/docs/engineering/entry-routing-layer-design.md` — TriMC 入口路由层设计（CTO-008）
+- `TriCompany/docs/engineering/entry-routing-layer-design.md` — TriMMC 入口路由层设计（CTO-008）

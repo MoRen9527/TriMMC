@@ -1,11 +1,11 @@
-# TriMC
+# TriMMC
 
-TriMC is the unified agent runtime and interaction core for TriMetaverse.
+TriMMC is the unified agent runtime and interaction core for TriMetaverse.
 
 Current boundary:
 
 - During the current copilot-host stage, both shadow and formal takeover still run directly on Copilot as the active host.
-- TriMC now represents the unified runtime-side boundary for service-domain execution and the R&D workflow slice.
+- TriMMC now represents the unified runtime-side boundary for service-domain execution and the R&D workflow slice.
 - TriHost is the planned host-adaptation and cutover layer for the go-live stage.
 - Tride remains part of the PC-side software stack and is not the formal host of the R&D workflow.
 - The virtual company remains the business and interaction carrier, not a third infrastructure host.
@@ -15,7 +15,7 @@ Responsibilities:
 - host the unified runtime core for service-domain execution and the R&D workflow slice
 - bridge OpenClaw gateway semantics and node execution lifecycle
 - enforce confirmation, high-risk interception, and privacy protection
-- dispatch tasks to TriLC nodes
+- dispatch tasks to TriRLC nodes
 - aggregate execution, audit, and settlement events
 - absorb the core-agent observability and replay subsystem
 - extend planner, context, tool orchestration, and model-call capabilities as code lands
@@ -23,7 +23,7 @@ Responsibilities:
 Stable OpenClaw baseline:
 
 - vendor/openclaw: vendored stable OpenClaw source snapshot at version 2026.3.28
-- this snapshot is the starting point for evolving OpenClaw into the TriMC runtime shadow baseline
+- this snapshot is the starting point for evolving OpenClaw into the TriMMC runtime shadow baseline
 
 Planned modules:
 

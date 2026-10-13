@@ -1,5 +1,5 @@
 // ── Session Bridge (M1 Phase-2) ──
-// TriMC 编排层 ↔ 官方 claude 会话桥：
+// TriMMC 编排层 ↔ 官方 claude 会话桥：
 //   spawn  → claude --bg -n <employeeId> "<task>"        → agentId
 //   list   → claude agents --json                         → 注册表（agentId↔sessionId↔employeeId）
 //   send   → claude -p --resume <sessionId> --fork-session "<msg>"  → 回复文本

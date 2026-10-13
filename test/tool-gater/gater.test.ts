@@ -1,4 +1,4 @@
-// ── TriMC Tool Gater Tests ──
+// ── TriMMC Tool Gater Tests ──
 // CTO-011: Tests for unified tool permission check (tier + risk-level).
 // Covers: checkToolPermission, createToolGater, summarizeGater.
 // Pattern: 小柯验证 — block-level tests for each gater function.

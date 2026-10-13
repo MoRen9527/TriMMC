@@ -1,4 +1,4 @@
-// ── TriMC Tool Permission System Tests ──
+// ── TriMMC Tool Permission System Tests ──
 // CTO-008: Tests for AgentTier permission model, filter, and integration with agent loop.
 // Covers: 6 tier composition cases, 7 canUseTool edges, 3 filter/boundary, 3 integration, 3 safety
 

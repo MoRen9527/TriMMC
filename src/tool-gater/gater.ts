@@ -1,4 +1,4 @@
-// ── TriMC Unified Tool Gater ──
+// ── TriMMC Unified Tool Gater ──
 // CTO-011: Combines tier-based access (permissions.ts) with
 // contract-driven risk evaluation (policy-gate) into a single
 // canUseTool hook for the agent loop.

@@ -1,4 +1,4 @@
-// ── TriMC Soul Loader ──
+// ── TriMMC Soul Loader ──
 // CTO-005: Converts AgentContract (six-element Schema v1) into structured system prompts.
 // Feeds into Context Builder's pipeline: contract → prompt → ContextSources → agentLoop.
 //

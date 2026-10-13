@@ -1,5 +1,5 @@
 // ── Session Initializer Unit Test (v3 contracts) ──
-// 6.4 (r13-2 收敛): TriMC server-side employee session initialization from
+// 6.4 (r13-2 收敛): TriMMC server-side employee session initialization from
 // same-source v3 contracts via agent-core loadContractV3.
 // O3: W_OK workspace check with negative path.
 // Uses a self-built fixture — does not depend on the TriCompany repo path.
@@ -138,7 +138,7 @@ describe('Session Initializer (v3 contracts)', () => {
   });
 
   // Windows 的 chmod 只读位不映射 Node W_OK 检查（FILE_ATTRIBUTE_READONLY 语义不同），
-  // 负路径在 Linux（TriMC 生产环境/CI）验证，本地 win32 跳过。
+  // 负路径在 Linux（TriMMC 生产环境/CI）验证，本地 win32 跳过。
   const o3Negative = process.platform === 'win32' ? it.skip : it;
   o3Negative('O3: throws SessionInitError when workspace is not writable', async () => {
     // 读只目录负路径：chmod 只读 → W_OK 失败 → SessionInitError

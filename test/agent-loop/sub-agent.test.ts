@@ -215,7 +215,7 @@ describe('resolveAgentTools', () => {
     assert.equal(tools.length, 0);
   });
 
-  it('handles already-resolved TriMC tool names passed through (subagent tier only)', () => {
+  it('handles already-resolved TriMMC tool names passed through (subagent tier only)', () => {
     const agentDef: AgentDefinition = {
       agentType: 'general-purpose',
       whenToUse: 'test',

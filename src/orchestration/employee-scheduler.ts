@@ -1,6 +1,6 @@
 // ── Employee Scheduler ──
 // 5-state machine: queued → assigned → running → accepted/rejected → done
-// Source: TriMC/docs/engineering/employee-orchestration-design.md §3.3
+// Source: TriMMC/docs/engineering/employee-orchestration-design.md §3.3
 
 import type {
   EmployeeRecord,

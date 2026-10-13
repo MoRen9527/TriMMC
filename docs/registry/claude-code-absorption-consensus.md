@@ -9,7 +9,7 @@
 
 ## 1. 当前状态
 
-| Phase | 分析文档 | 分析质量 | TriMC 当前吸收率 | 代码落地 |
+| Phase | 分析文档 | 分析质量 | TriMMC 当前吸收率 | 代码落地 |
 |-------|---------|---------|-----------------|---------|
 | 1 核心 Loop | `phase-1-core-loop-v2.md` | 25/25 PASS | **100% Tier 1** ✅ | `loop.ts` ~480行，streaming + 三级错误级联 + spread-replace state + abort |
 | 2 Prompt 缓存 | `phase-2-prompt-cache-v2.md` | 25/25 PASS | **100% Tier 1** ✅ | `prompt-cache/` — SHA256 hash + change detection + cache hit 估算 |
@@ -60,10 +60,10 @@ P3（远期）       各 Phase Tier 2-4
 
 | Tier | 含义 | 准入标准 |
 |------|------|---------|
-| **Tier 1 (MVP)** | 必须吸收才能进入下一阶段 | 吸收后 TriMC 具备该维度的最小可行能力 |
+| **Tier 1 (MVP)** | 必须吸收才能进入下一阶段 | 吸收后 TriMMC 具备该维度的最小可行能力 |
 | **Tier 2 (Optimize)** | 成本/性能/安全增强 | Tier 1 稳定运行后择机启动 |
 | **Tier 3 (Observe)** | 可观测性 + 高级能力 | 需 Tier 1-2 数据积累后评估 |
-| **Tier 4 (Extend)** | 生态扩展 | TriMC 正式宿主阶段再评估 |
+| **Tier 4 (Extend)** | 生态扩展 | TriMMC 正式宿主阶段再评估 |
 
 ---
 

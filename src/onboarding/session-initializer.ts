@@ -1,6 +1,6 @@
 // ── Employee Session Initializer (v3 contracts) ──
-// 6.4 会话初始化器（服务器 TriMC 端）：以 v3 合同（TriCompany/source-agents/*.contract.yaml）
-// 为基础装配员工会话运行时配置，与本地 TriLC 侧（src/company/session-initializer.ts）同构，
+// 6.4 会话初始化器（服务器 TriMMC 端）：以 v3 合同（TriCompany/source-agents/*.contract.yaml）
+// 为基础装配员工会话运行时配置，与本地 TriRLC 侧（src/company/session-initializer.ts）同构，
 // 互为 fallback 拉员工上岗。
 //
 // r13-2 收敛：合同解析统一走 @tricompany/agent-core loadContractV3（O2-A 落地），
@@ -11,7 +11,7 @@ import { resolve, join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { loadContractV3, type AgentContractV3 } from '@tricompany/agent-core';
 
-// ── Types (mirror TriLC src/company/session-initializer.ts SessionConfig) ──
+// ── Types (mirror TriRLC src/company/session-initializer.ts SessionConfig) ──
 
 export interface V2DecisionRights {
   approve: string[];
@@ -52,7 +52,7 @@ function readFileSafe(filePath: string): string {
   return '';
 }
 
-/** Parse tool config from YAML frontmatter (domain logic, mirrors TriLC parseFrontmatter). */
+/** Parse tool config from YAML frontmatter (domain logic, mirrors TriRLC parseFrontmatter). */
 function parseFrontmatter(text: string): Record<string, unknown> {
   if (!text) return {};
   const trimmed = text.trim();
@@ -92,7 +92,7 @@ function loadV3Contract(contractPath: string, sourceRoot: string): V2SessionConf
   const agentBody = readFileSafe(resolve(sourceRoot, paths.agent_body));
   const agentFrontmatter = readFileSafe(resolve(sourceRoot, paths.agent_frontmatter));
 
-  // Assemble system prompt: soul + agent body (mirrors TriLC)
+  // Assemble system prompt: soul + agent body (mirrors TriRLC)
   const systemPrompt = [soul, agentBody].filter(Boolean).join('\n\n');
 
   const explicitToolControl = parseFrontmatter(agentFrontmatter);
@@ -121,7 +121,7 @@ function loadV3Contract(contractPath: string, sourceRoot: string): V2SessionConf
 
 /**
  * Scan a source-agents directory for v3 contracts:
- * `<sourceAgentsDir>/<agent-dir>/<agent-dir>.contract.yaml` (mirrors TriLC loadAll).
+ * `<sourceAgentsDir>/<agent-dir>/<agent-dir>.contract.yaml` (mirrors TriRLC loadAll).
  */
 export function loadV2Contracts(sourceAgentsDir: string): V2SessionConfig[] {
   const contracts: V2SessionConfig[] = [];
@@ -152,11 +152,11 @@ export function loadV2Contracts(sourceAgentsDir: string): V2SessionConfig[] {
 // ── Session Initialization ──
 
 /**
- * Employee session initialization on the TriMC (server) side:
+ * Employee session initialization on the TriMMC (server) side:
  * 1. Contract load — v3 contract from the same-source TriCompany/source-agents
  * 2. Five-piece assembly — systemPrompt (soul + agent_body), decisionRights, toolControl
  * 3. Workspace ready — workspaceRoot/<agentId> created (idempotent) + W_OK check
- *    （O3：基准 TriLC src/company/session-initializer.ts ensureWorkspaceDir）
+ *    （O3：基准 TriRLC src/company/session-initializer.ts ensureWorkspaceDir）
  *
  * Throws SessionInitError when the agent contract is absent/unloadable
  * or the workspace is not writable.

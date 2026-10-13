@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-Claude Code 的 sub-agent 系统是分层分工体系的核心——从"单体 agent"升级到"树形多 agent 协同"。TriMC 当前 sub-agent 基础设施：**0%**。
+Claude Code 的 sub-agent 系统是分层分工体系的核心——从"单体 agent"升级到"树形多 agent 协同"。TriMMC 当前 sub-agent 基础设施：**0%**。
 
 Phase 3 v2 通过小全模式重新深度阅读了全部 15 个源文件，逐行验证 v1 文档的每个技术声明。发现 v1 文档存在 **3 处需要修正的结论**，其余框架性分析基本正确。
 
@@ -334,9 +334,9 @@ call({ prompt, subagent_type, description, model, run_in_background, name, team_
 
 ---
 
-## 4. TriMC Current State Gap
+## 4. TriMMC Current State Gap
 
-| 子系统 | TriMC | Claude Code | Gap |
+| 子系统 | TriMMC | Claude Code | Gap |
 |--------|-------|-------------|-----|
 | Agent 定义系统 | 无 | 三层类型体系 | 100% |
 | Agent 加载管道 | 无 | 6 层来源 + 覆盖 | 100% |
@@ -350,7 +350,7 @@ call({ prompt, subagent_type, description, model, run_in_background, name, team_
 | AgentTool Handler | 无 | 800+ 行 spawn 路由器 | 100% |
 | BackgroundTaskRegistry | 无 | 注册/查询/通知 | 100% |
 
-**结论**：TriMC sub-agent 基础设施 = **0%**。
+**结论**：TriMMC sub-agent 基础设施 = **0%**。
 
 ---
 
@@ -365,7 +365,7 @@ call({ prompt, subagent_type, description, model, run_in_background, name, team_
 | Sync 执行路径 | system prompt 构建 → createSubagentContext → query | L |
 | Tools resolve | `resolveAgentTools()` + `filterToolsForAgent()` | M |
 | 权限覆盖 | 6 条覆盖规则 | S |
-| AgentTool 注册 | 注入 TriMC agent loop 的 tool dispatch | S |
+| AgentTool 注册 | 注入 TriMMC agent loop 的 tool dispatch | S |
 
 ### Tier 2: 成本优化（Phase 3b）
 
@@ -403,12 +403,12 @@ call({ prompt, subagent_type, description, model, run_in_background, name, team_
 ### 6.2 Worktree 隔离时机
 **建议**：Tier 2 采纳，Tier 1 用"文件锁"或"只读并行"替代。
 
-### 6.3 Agent 记忆与 TriMC 四层记忆体系映射
-**建议**：Agent 记忆的 user/project/local 三层映射到 TriMC 的 Session Memory 层，保持与 Soul/Project/Tool Memory 的隔离。
+### 6.3 Agent 记忆与 TriMMC 四层记忆体系映射
+**建议**：Agent 记忆的 user/project/local 三层映射到 TriMMC 的 Session Memory 层，保持与 Soul/Project/Tool Memory 的隔离。
 
 ### 6.4 Built-in Agent 裁剪
 - ✅ 保留：GeneralPurpose、Explore、Verification
-- ✅ 适配：Plan（结合 TriMC 产品规划）
+- ✅ 适配：Plan（结合 TriMMC 产品规划）
 - ⚠️ 暂缓：ClaudeCodeGuide（无需求）、StatuslineSetup（CLI 专属）
 
 ---
@@ -464,16 +464,16 @@ call({ prompt, subagent_type, description, model, run_in_background, name, team_
 
 ## 9. Sources
 
-- `TriMC/vendor/claude-code/src/tools/AgentTool/AgentTool.tsx` — call() 完整追踪 (L239-1050+)
-- `TriMC/vendor/claude-code/src/tools/AgentTool/runAgent.ts` — 完整阅读 (900+ lines)
-- `TriMC/vendor/claude-code/src/tools/AgentTool/loadAgentsDir.ts` — 完整阅读
-- `TriMC/vendor/claude-code/src/tools/AgentTool/agentToolUtils.ts` — 完整阅读
-- `TriMC/vendor/claude-code/src/tools/AgentTool/prompt.ts` — 完整阅读 (~450 lines)
-- `TriMC/vendor/claude-code/src/tools/AgentTool/forkSubagent.ts` — 完整阅读 (211 lines)
-- `TriMC/vendor/claude-code/src/tools/AgentTool/builtInAgents.ts` — 完整阅读 (72 lines)
-- `TriMC/vendor/claude-code/src/tools/AgentTool/resumeAgent.ts` — 完整阅读
-- `TriMC/vendor/claude-code/src/tools/AgentTool/agentMemory.ts` — 完整阅读 (175 lines)
-- `TriMC/vendor/claude-code/src/tools/AgentTool/agentMemorySnapshot.ts` — 完整阅读 (160+ lines)
-- `TriMC/vendor/claude-code/src/tools/AgentTool/constants.ts` — 完整阅读 (13 lines)
-- `TriMC/docs/engineering/claude-code-absorption/phase-3-subagent-tree.md` — v1 文档
-- `TriMC/docs/registry/code-state.md` — TriMC 当前状态
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/AgentTool.tsx` — call() 完整追踪 (L239-1050+)
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/runAgent.ts` — 完整阅读 (900+ lines)
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/loadAgentsDir.ts` — 完整阅读
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/agentToolUtils.ts` — 完整阅读
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/prompt.ts` — 完整阅读 (~450 lines)
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/forkSubagent.ts` — 完整阅读 (211 lines)
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/builtInAgents.ts` — 完整阅读 (72 lines)
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/resumeAgent.ts` — 完整阅读
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/agentMemory.ts` — 完整阅读 (175 lines)
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/agentMemorySnapshot.ts` — 完整阅读 (160+ lines)
+- `TriMMC/vendor/claude-code/src/tools/AgentTool/constants.ts` — 完整阅读 (13 lines)
+- `TriMMC/docs/engineering/claude-code-absorption/phase-3-subagent-tree.md` — v1 文档
+- `TriMMC/docs/registry/code-state.md` — TriMMC 当前状态
