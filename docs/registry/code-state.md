@@ -89,6 +89,15 @@
 - `README.md` 的长期目标口径和当前代码成熟度存在差距，registry 需要持续扮演“防过度表述”的收口层。
 - `vendor/openclaw/` 若与 `src/` 不持续区分，后续很容易把 shadow 吸收层误写成 TriMMC 自研现役实现。
 
+## Q2 反向通道回声出向队列（2026-10-15，CTO 派工单 046caf7cb 件①·FSD 小全·commit 8b075f9）
+
+- **三端点**（`src/notify/echo-routes.ts` 薄壳+`src/notify/echo-queue.ts` 队列域·挂 `/internal/*` X-Internal-Token 门内，app.ts notify 块后动态 import）：`POST /internal/v1/echo/enqueue`（服务域写入）/ `GET /internal/v1/echo/queue?consumer=`（拉取）/ `POST /internal/v1/echo/ack`（消账）。
+- **四红线技术形**：红线① text≤8KB 字节面（`Buffer.byteLength`·多字节反例入测）+enqueue 字段白名单（六键+title/message_id，file/binary 等未列键 400 `forbidden_fields`）；红线② target_endpoint 白名单 `TRIMC_ECHO_TARGETS` env 结构化（缺省单值 `m-local-mailbox`·空值回落缺省）+consumer 白名单写死 `{mc-echo-pull}`（Set 常量零 env 面）——白名单外 403+ledger reject 留痕；红线③ echo 存储（`echo-queue.json`）与 cron/job 调度 API 零共享面（独立文件独立路由·设计注记，收推≠执行的结构性保证在 TriMLC 落箱侧 advisory 硬打标）；红线④ 证据三元组 {source_id, ts_machine, ref} 缺/残入队即拒 400 `missing_tuple`（第一闸；落箱侧二次校验标疑=第二闸在件②echo-pull）+ts_machine 可解析校验 400 `invalid_ts_machine`。
+- **队列形态**：JSON 原子落盘（tmp+rename·outbox 同族）；pending 上限 200（503 `queue_full`）；TTL 24h 扫描标 expired 不静默删；message_id 幂等（重投 duplicate=true 零重落）；拉取按 enqueued_at 升序+attempts+1；契约投影六键 {message_id, source_id, ts_machine, ref, text, title?}（件②锚死形·内部状态零暴露）。台账=`echo-queue-ledger.jsonl` 事件型（enqueue_accepted/rejected/expired/acked·元数据+title 零 text 正文）。
+- 测试：`test/echo-queue.test.ts` 14 例（env 缝 `TRIMC_ECHO_QUEUE_FILE` 钉 mkdtemp·红线四条逐条入测+幂等链+上限+六键投影+时间序）14/14 PASS；tsc 既有错（onboarding/session-initializer.ts TS2345）stash A/B 独立验与本件零涉。
+- 部署态：**已上 sg 现役运行位**（2026-10-15 19:40 CST 段）——sg bare（/srv/git/TriMMC.git）顶 8b075f9→/srv/fleet/TriMMC reset+build+`systemctl restart trimc`（新 pid 41261）；活体断言 healthz 200/queue 200 空箱（404 时代结束）/无 token 401。**端到端冒烟硬门全链绿**：sg enqueue 201（echo-mv9gxhc9vyh65p）→本机 echo-pull 拉取 stored=1 acked=1 suspects=0→8713 信箱实达（markRead ok·unread 664→663）→sg queue 复查 count:0→ledger enqueue/acked 双行。负向三探针绿：白名单外 403+ledger reject 行/缺三元组 400+ledger 行/file 字段 400 `forbidden_fields`（routes 层拒不落 ledger——留痕面=响应，如实注记）。
+- 已知限制：GitHub push 通道当夜 443 断连（HTTP/1.1 亦败）——8b075f9 经 sg 备援通道（origin 双 pushurl ssh 腿）上线，**GitHub 位候网络窗补推**（届时 origin/dev 应=8b075f9）。全量基线 608/639（30 败）未逐族归因，候窗做基线 worktree 对照（初判既有：本件新文件零 tsc 报+14/14 绿）。
+
 ## Sources
 
 - `../../package.json`
