@@ -410,6 +410,16 @@ export function createTriMMCApp(env: TriMMCEnv) {
           if (handled) return;
         }
 
+        // ── Q2 反向通道件①：回声出向队列（派工单 046caf7cb·CEO 18:16 批）──
+        // POST /internal/v1/echo/enqueue  服务域写入（目标端点白名单+三元组入队即拒）
+        // GET  /internal/v1/echo/queue    mc-echo-pull 按消费方拉取
+        // POST /internal/v1/echo/ack      消账确认（幂等）
+        if (req.url?.startsWith('/internal/v1/echo')) {
+          const { handleEchoRoutes } = await import('../notify/echo-routes.js');
+          const handled = await handleEchoRoutes(req, res, req.url ?? '/');
+          if (handled) return;
+        }
+
         // ── GET /internal/v1/tasks ──
         // S7: Query unified task state across all TriRLC nodes.
         if (req.url?.startsWith('/internal/v1/tasks') && req.method === 'GET') {
