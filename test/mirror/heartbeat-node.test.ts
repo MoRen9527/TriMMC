@@ -81,3 +81,38 @@ describe('MirrorStore node heartbeat (dualrun contract v1.0)', () => {
     assert.equal(t1!.status, 'unknown');
   });
 });
+
+// ── listNodeHeartbeats（E1-4 假警修复 b 案·LG-085）——观察者/CLI 消费面三案 ──
+describe('MirrorStore.listNodeHeartbeats (gap truth endpoint)', () => {
+  it('returns empty array on empty table', () => {
+    const store = new MirrorStore();
+    assert.deepEqual(store.listNodeHeartbeats(NOW), []);
+  });
+
+  it('projects nodeId + record + ageMs truth for a fresh node', () => {
+    const store = new MirrorStore();
+    store.recordNodeHeartbeat('node-a', 'connected', NOW);
+    store.recordNodeHeartbeat('node-a', 'connected', NOW + 5_000);
+
+    const rows = store.listNodeHeartbeats(NOW + 8_000);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]!.nodeId, 'node-a');
+    assert.equal(rows[0]!.lastSeenAt, NOW + 5_000, 'lastSeenAt = 末次心跳时刻（每刷）');
+    assert.equal(rows[0]!.state, 'connected');
+    assert.equal(rows[0]!.consecutiveHbs, 2);
+    assert.equal(rows[0]!.unknown, false);
+    assert.equal(rows[0]!.ageMs, 3_000, 'ageMs = now - lastSeenAt（gap 真值）');
+  });
+
+  it('carries unknown flag and growing ageMs for a stale node', () => {
+    const store = new MirrorStore();
+    store.recordNodeHeartbeat('node-b', 'connected', NOW);
+    store.scanStaleNodes(30_000, 180_000, NOW + 31_000); // → unknown
+
+    const rows = store.listNodeHeartbeats(NOW + 61_000);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]!.nodeId, 'node-b');
+    assert.equal(rows[0]!.unknown, true, 'unknown 旗标如实透出');
+    assert.equal(rows[0]!.ageMs, 61_000, 'ageMs 真实增长（睡眠/断链判据）');
+  });
+});

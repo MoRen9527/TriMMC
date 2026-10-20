@@ -70,6 +70,23 @@ export class MirrorStore {
   }
 
   /**
+   * 节点心跳表读出（E1-4 观察者/bod-cli 消费面·LG-085 假警修复 b 案）。
+   * ageMs = now - lastSeenAt = 「自末次心跳到达」gap 真值——替代 mirror 日志
+   * 变化沿静默形（稳定健康期零行→lastActivityEpoch 冻结→观察者假超时，
+   * 2026-10-20 对平勘验实锚）。时钟注入与 recordNodeHeartbeat 对称。
+   */
+  listNodeHeartbeats(now = Date.now()): Array<{ nodeId: string } & NodeHeartbeatRecord & { ageMs: number }> {
+    return [...this.nodeHeartbeats.entries()].map(([nodeId, hb]) => ({
+      nodeId,
+      lastSeenAt: hb.lastSeenAt,
+      state: hb.state,
+      consecutiveHbs: hb.consecutiveHbs,
+      unknown: hb.unknown,
+      ageMs: now - hb.lastSeenAt,
+    }));
+  }
+
+  /**
    * 扫描心跳表，超阈值节点 → markNodeUnknown。
    * 双阈值（契约 3.2）：state=degraded 节点用 180s 宽松阈值（覆盖 60s 慢心跳 ×3 防误判），
    * 其余 30s（3×interval，与 TriRLC failThreshold=3 对称）。

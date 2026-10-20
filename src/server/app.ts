@@ -637,6 +637,22 @@ export function createTriMMCApp(env: TriMMCEnv) {
           return;
         }
 
+        // ── GET /internal/v1/mirror/heartbeats ──
+        // E1-4 假警修复 b 案（LG-085·CTO 终裁 2026-10-20）：节点心跳表读出端点。
+        // gap 真值=ageMs（自末次心跳到达），替代 mirror 日志变化沿静默形。
+        // 鉴权=上方 /internal/ 统一 fail-closed 门自动覆盖（X-Internal-Token）。
+        if (req.url === '/internal/v1/mirror/heartbeats' && req.method === 'GET') {
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              ok: true,
+              fetchedAt: new Date().toISOString(),
+              nodes: mirrorStore.listNodeHeartbeats(),
+            }),
+          );
+          return;
+        }
+
         // ── /internal/v1/cron/* ──
         // cron 路由（r1-2）：add/list/update/remove/run/log/status，委托 src/cron/routes.ts
         if (
