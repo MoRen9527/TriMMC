@@ -45,6 +45,21 @@ import {
 } from '../config/key-cache.js';
 import { resolveDefaultModelDetailed } from '../config-sync/default-model.js';
 import { timingSafeEqual } from 'node:crypto';
+// FADE-011 S2/S5: fade 十段链移植（TriMLC src/fade 同构直搬·LG-092 工序 2·
+// CTO 勘定裁达四项落笔）——boot 恢复链 + 驱动续跑 + /internal/v1/fade/runs
+// 触发端点。event-watch 段不随迁（TriMMC 无 watch 面·CTO 裁③死表注记随搬）。
+// 收口翻转只经 finalizeWithGate（唯一通道·S4 契约不变）。
+import {
+  openFadeStoreAndRecover,
+  summarizeBootRecovery,
+  type FadeBootRecoveryResult,
+} from '../fade/recovery.js';
+import {
+  createAndDriveRun,
+  resumeUnfinishedRuns,
+  type FadeRunTreeMeta,
+} from '../fade/driver.js';
+import type { FadeRunInput } from '../fade/types.js';
 
 /** 常数时间字符串比较（TriRLC app.ts:148 同构）：长度不等时不能直接短路
  * （耗时差会泄漏长度信息），先做一次同长哑比较抹平时间特征，再返回 false。 */
@@ -120,6 +135,49 @@ export function createTriMMCApp(env: TriMMCEnv) {
 
   return {
     async start(): Promise<void> {
+      // FADE-011 S2: boot 序挂恢复链（TriMLC 同构直搬·LG-092 工序 2）——扫
+      // fade.db 未完 run 按 spec §8.1 批认正身款恢复（幂等段续跑=状态不动·
+      // EXECUTING 回退 CLOSING 收口核残证）。fail-soft：恢复面故障不阻 daemon
+      // 启动（独立键空间·回滚=revert+删 fade.db 即回旧行为），故障显式落日志
+      // 禁静默。store 落位=TRIMC_CONFIG_DIR 根（config-sync/cron 现役同位惯例·
+      // defaultConfigDir 同形解析），fade.db 文件名=store 层固定。
+      let fadeBoot: FadeBootRecoveryResult | null = null;
+      try {
+        fadeBoot = openFadeStoreAndRecover(
+          process.env.TRIMC_CONFIG_DIR ?? path.resolve('data'),
+          { log: (message) => console.log(`[trimmc] fade: ${message}`) },
+        );
+        const summary = summarizeBootRecovery(fadeBoot.report);
+        if (summary) console.log(`[trimmc] fade boot recovery: ${summary}`);
+      } catch (err) {
+        console.warn('[trimmc] fade boot recovery failed (continuing):', (err as Error).message);
+      }
+
+      // FADE-011 S5: boot sweep 后挂驱动续跑——未完 run 从 checkpoint 读回树
+      // 元数据（driver 每段写·S1 既有恢复语义字段）续驱至终态。fire-and-forget：
+      // 驱动含收口门子进程（S4 上界 30s/run）不阻 start() 返回；per-run
+      // fail-soft，摘要落日志禁静默。skillsRoot=TRIMMC_TRI_SKILL_ROOT 显式
+      // 覆盖（sg dist 形强制·CTO 裁④；未设=缺省 scriptDir 解析 dev 布局）。
+      if (fadeBoot) {
+        const resumeStore = fadeBoot.store;
+        const resumeSkillsRoot = process.env.TRIMMC_TRI_SKILL_ROOT;
+        void resumeUnfinishedRuns(resumeStore, resumeSkillsRoot ? { skillsRoot: resumeSkillsRoot } : {})
+          .then((summary) => {
+            if (summary.attempted > 0) {
+              console.log(`[trimmc] fade driver resume: attempted=${summary.attempted} terminal=${summary.terminalReached.length} stopped=${summary.stopped.length} failed=${summary.failed.length}`);
+              for (const f of summary.failed) {
+                console.warn(`[trimmc] fade driver resume failed run=${f.runId}: ${f.error}`);
+              }
+              for (const s of summary.stopped) {
+                console.warn(`[trimmc] fade driver resume stopped run=${s.runId} state=${s.state} detail=${s.detail}`);
+              }
+            }
+          })
+          .catch((err) => {
+            console.warn('[trimmc] fade driver resume failed (continuing):', (err as Error).message);
+          });
+      }
+
       server = createServer(async (req, res) => {
         if (req.url === '/healthz') {
           // cron 块对齐 TriRLC app.ts healthz：{enabled, jobCount, degraded, consecutiveFailures}
@@ -173,6 +231,67 @@ export function createTriMMCApp(env: TriMMCEnv) {
             res.end(JSON.stringify({ error: 'unauthorized: missing or invalid X-Internal-Token' }));
             return;
           }
+        }
+
+        // ── POST /internal/v1/fade/runs（FADE-011 S5 触发端点·TriMLC 同构
+        // 直搬 LG-092 工序 2）── body {runId, treeDir[, idempotencyKey]} →
+        // createAndDriveRun 同步驱动至终态返回（段工作毫秒级·收口门上界 S4
+        // DEFAULT_GATE_TIMEOUT_MS=30s）。门拒 = gated:false 是合法业务结果
+        // （200 带 finalState，run 停 FINALIZING 可见·S4 rejection ledger 有
+        // 行），仅基础设施故障才 5xx。树元数据贯通：treeDir 来自请求体·驱动
+        // 链零硬编码路径（D-24）。writeAuthority=daemon:trimmc（CTO 裁②·
+        // 8712 写迹与 8713 可溯源区分·禁直搬旧值）；homeDomain 沿 TriMLC
+        // 直搬原值（四裁未涉·毕报候裁注记）；skillsRoot=TRIMMC_TRI_SKILL_ROOT
+        // 显式覆盖（CTO 裁④·sg dist 形强制·未设=缺省 scriptDir 解析）。
+        if (req.url === '/internal/v1/fade/runs' && req.method === 'POST') {
+          if (!fadeBoot) {
+            res.writeHead(503, { 'content-type': 'application/json' });
+            res.end(JSON.stringify({ error: 'fade_store_unavailable' }));
+            return;
+          }
+          const fadeStore = fadeBoot.store;
+          try {
+            const chunks: Buffer[] = [];
+            for await (const chunk of req) chunks.push(chunk);
+            const raw = Buffer.concat(chunks).toString('utf-8');
+            let parsed: { runId?: unknown; idempotencyKey?: unknown; treeDir?: unknown } = {};
+            if (raw.length > 0) parsed = JSON.parse(raw) as typeof parsed;
+            if (typeof parsed.runId !== 'string' || parsed.runId.length === 0) {
+              res.writeHead(400, { 'content-type': 'application/json' });
+              res.end(JSON.stringify({ error: 'runId_required' }));
+              return;
+            }
+            if (typeof parsed.treeDir !== 'string' || parsed.treeDir.length === 0) {
+              res.writeHead(400, { 'content-type': 'application/json' });
+              res.end(JSON.stringify({ error: 'treeDir_required' }));
+              return;
+            }
+            const input: FadeRunInput = {
+              runId: parsed.runId,
+              idempotencyKey: typeof parsed.idempotencyKey === 'string' && parsed.idempotencyKey.length > 0
+                ? parsed.idempotencyKey
+                : `internal-fade-run:${parsed.runId}`,
+              profile: 'runtime-owned-durable',
+              homeDomain: 'M-plane-local',
+              writeAuthority: 'daemon:trimmc',
+              authorityEpoch: 1,
+              version: 'fade011-s5-driver',
+            };
+            const meta: FadeRunTreeMeta = { treeDir: parsed.treeDir };
+            const fadeSkillsRoot = process.env.TRIMMC_TRI_SKILL_ROOT;
+            const { created, result } = await createAndDriveRun(
+              fadeStore,
+              { ...input, meta },
+              fadeSkillsRoot ? { skillsRoot: fadeSkillsRoot } : {},
+            );
+            console.log(`[trimmc] fade driver run ${parsed.runId}: created=${created} finalState=${result.finalState} gated=${result.gated}`);
+            res.writeHead(200, { 'content-type': 'application/json' });
+            res.end(JSON.stringify({ object: 'fade.run', created, ...result }));
+          } catch (err) {
+            res.writeHead(500, { 'content-type': 'application/json' });
+            res.end(JSON.stringify({ error: 'fade_run_failed', message: (err as Error).message }));
+          }
+          return;
         }
 
         // ── GET /internal/v1/agents ──

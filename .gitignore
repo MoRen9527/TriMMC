@@ -15,3 +15,6 @@ coverage/
 
 # Python cache
 __pycache__/
+
+# Runtime state (daemon/test local: fade.db, config-cache, cron logs)
+data/
