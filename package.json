@@ -2,7 +2,7 @@
   "name": "trimmc",
   "version": "0.1.1",
   "private": true,
-  "description": "TriMetaverse Main Controller",
+  "description": "TriMetaverse M-plane Master Controller",
   "type": "module",
   "engines": {
     "node": ">=18.20.0"
