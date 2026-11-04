@@ -240,8 +240,10 @@ export function createTriMMCApp(env: TriMMCEnv) {
         // （200 带 finalState，run 停 FINALIZING 可见·S4 rejection ledger 有
         // 行），仅基础设施故障才 5xx。树元数据贯通：treeDir 来自请求体·驱动
         // 链零硬编码路径（D-24）。writeAuthority=daemon:trimmc（CTO 裁②·
-        // 8712 写迹与 8713 可溯源区分·禁直搬旧值）；homeDomain 沿 TriMLC
-        // 直搬原值（四裁未涉·毕报候裁注记）；skillsRoot=TRIMMC_TRI_SKILL_ROOT
+        // 8712 写迹与 8713 可溯源区分·禁直搬旧值）；homeDomain='M-plane-master'
+        // （CTO 门禁裁达 09:10Z·对表本地域/服务域两分——TriMLC='M-plane-local'/
+        // TriMMC='M-plane-master'·与 writeAuthority 同族面属语义·破直搬正形
+        // 一处记录面诚实优先）；skillsRoot=TRIMMC_TRI_SKILL_ROOT
         // 显式覆盖（CTO 裁④·sg dist 形强制·未设=缺省 scriptDir 解析）。
         if (req.url === '/internal/v1/fade/runs' && req.method === 'POST') {
           if (!fadeBoot) {
@@ -272,7 +274,7 @@ export function createTriMMCApp(env: TriMMCEnv) {
                 ? parsed.idempotencyKey
                 : `internal-fade-run:${parsed.runId}`,
               profile: 'runtime-owned-durable',
-              homeDomain: 'M-plane-local',
+              homeDomain: 'M-plane-master',
               writeAuthority: 'daemon:trimmc',
               authorityEpoch: 1,
               version: 'fade011-s5-driver',
