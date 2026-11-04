@@ -88,7 +88,9 @@ function loadV3Contract(contractPath: string, sourceRoot: string): V2SessionConf
   const family = parsed.contract.family;
   const paths = parsed.paths;
 
-  const soul = readFileSafe(resolve(sourceRoot, paths.soul));
+  // PathsSchema soul optional（agent-core batch-15 件③：Registry family 无四件套）——
+  // 缺失时 '' 与 readFileSafe 缺文件语义同族，systemPrompt 组装 filter(Boolean) 剔除。
+  const soul = paths.soul ? readFileSafe(resolve(sourceRoot, paths.soul)) : '';
   const agentBody = readFileSafe(resolve(sourceRoot, paths.agent_body));
   const agentFrontmatter = readFileSafe(resolve(sourceRoot, paths.agent_frontmatter));
 
